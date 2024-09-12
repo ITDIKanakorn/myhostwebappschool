@@ -1,0 +1,1 @@
+<td class='text-center'><?= htmlspecialchars(number_format($student['tuitionFee'], 0)) ?></td>
