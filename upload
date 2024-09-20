@@ -1,0 +1,65 @@
+<?php
+require 'vendor/autoload.php';
+require_once '../config/connect.php';
+
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+
+// Check if file is uploaded
+if (isset($_FILES['upload-file']) && $_FILES['upload-file']['error'] == UPLOAD_ERR_OK) {
+    $filePath = $_FILES['upload-file']['tmp_name'];
+
+    // Read the Excel file
+    $spreadsheet = IOFactory::load($filePath);
+    $worksheet = $spreadsheet->getActiveSheet();
+    $rows = $worksheet->toArray();
+
+    // Skip the first row (header)
+    unset($rows[0]);
+
+    // Prepare the SQL query for updating data
+    $stmt = $condb->prepare("
+        INSERT INTO student (
+            student_id, ID_card, name, phone, admit, learner_type,student_status,
+            enrollment_year, major_id, class_id, username, password
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            ID_card = VALUES(ID_card),
+            name = VALUES(name),
+            phone = VALUES(phone),
+            admit = VALUES(admit),
+            learner_type = VALUES(learner_type),
+            student_status = VALUES(student_status),
+            enrollment_year = VALUES(enrollment_year),
+            major_id = VALUES(major_id),
+            class_id = VALUES(class_id),
+            username = VALUES(username),
+            password = VALUES(password)
+    ");
+
+    // Update data for each row
+    foreach ($rows as $row) {
+        // Debug student_id
+        echo "Inserting student_id: " . $row[0] . "<br>";
+
+        $stmt->execute([
+            $row[0], // student_id
+            $row[1], // ID_card
+            $row[2], // name
+            $row[3], // phone
+            $row[4], // admit
+            $row[5], // learner_type
+            $row[6], // student_status
+            $row[7], // enrollment_year
+            $row[8], // major_id
+            $row[9], // class_id
+            $row[10], // username
+            $row[11] // password
+        ]);
+    }
+
+    echo json_encode(["message" => "Data updated successfully!"]);
+} else {
+    echo json_encode(["message" => "File upload error!"]);
+}
+?>
