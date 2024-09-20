@@ -1,1 +1,342 @@
-<td class='text-center'><?= htmlspecialchars(number_format($student['tuitionFee'], 0)) ?></td>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการข้อมูลนักเรียน</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+    <!-- SweetAlert2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <!-- Custom CSS -->
+    <style>
+        /* Custom table header */
+        .thead-dark {
+            background-color: #343a40; /* Dark background */
+            color: #fff; /* White text */
+        }
+
+        /* Card border color */
+        .card.border-primary {
+            border-color: #007bff; /* Primary blue */
+        }
+
+        /* Table row hover effect */
+        .table-hover tbody tr:hover {
+            background-color: #f1f1f1; /* Light gray */
+        }
+
+        /* Button styles */
+        .btn-primary {
+            background-color: #28a745; /* Green */
+            border-color: #28a745; /* Green */
+        }
+
+        .btn-warning {
+            background-color: #ffc107; /* Yellow */
+            border-color: #ffc107; /* Yellow */
+        }
+
+        .btn-danger {
+            background-color: #dc3545; /* Red */
+            border-color: #dc3545; /* Red */
+        }
+
+        /* Text color */
+        .text-primary {
+            color: #007bff; /* Blue */
+        }
+
+        /* Table cell text alignment */
+        .text-center {
+            text-align: center;
+        }
+
+        /* Right-aligned button container */
+        .header-buttons {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        /* Custom file upload */
+        .custom-file-upload {
+            border: 2px solid #007bff; /* Primary blue */
+            border-radius: 5px; /* Rounded corners */
+            display: inline-block;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            color: #007bff; /* Primary blue */
+            background-color: #f8f9fa; /* Light gray background */
+            transition: background-color 0.3s, color 0.3s; /* Smooth transition for color changes */
+        }
+
+        .custom-file-upload:hover {
+            background-color: #007bff; /* Primary blue on hover */
+            color: #fff; /* White text on hover */
+            border-color: #007bff; /* Primary blue border on hover */
+        }
+
+        .custom-file-upload input[type="file"] {
+            display: none; /* Hide the default file input */
+        }
+    </style>
+</head>
+<body>
+    <!-- Content Wrapper. Contains page content -->
+    <div class="content-wrapper">
+        <!-- Content Header (Page header) -->
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 class="text-primary">
+                            จัดการข้อมูลนักเรียน
+                            <a href="student_add.php" class="btn btn-primary">เพิ่มข้อมูลนักเรียน</a>
+                        </h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="header-buttons">
+                            <!-- Excel export button -->
+                            <button class="btn btn-info ml-2" id="export-btn">
+                                <i class="fas fa-file-excel"></i> ดาวน์โหลด Excel
+                            </button>
+                            <!-- Excel upload button -->
+                            <form id="upload-form" method="POST" enctype="multipart/form-data">
+    <label class="custom-file-upload ml-2">
+        <input type="file" name="upload-file" id="upload-file" accept=".xlsx, .xls">
+        <i class="fas fa-file-upload"></i> อัปโหลด Excel
+    </label>
+</form>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- /.container-fluid -->
+        </section>
+
+        <!-- Main content -->
+        <section class="content">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card border-primary">
+                            <!-- /.card-header -->
+                            <div class="card-body">
+                                <style>
+                                    /* Font size for table header */
+                                    .table thead th {
+                                        font-size: 13px; /* Adjust header font size here */
+                                    }
+                                    /* Font size for table body */
+                                    .table tbody td {
+                                        font-size: 13px; /* Adjust body font size here */
+                                    }
+                                </style>
+                                <table id="example1" class="table table-bordered table-striped table-hover">
+                                    <thead class="thead-dark">
+                                        <tr>
+                                            <th width="10%" class='text-center'>รหัสนักเรียน</th>
+                                            <th width="15%" class='text-center'>เลขบัตรประชาชน</th>
+                                            <th width="20%" class='text-center'>ชื่อ-สกุล</th>
+                                            <th width="15%" class='text-center'>เบอร์โทร</th>
+                                            <th width="15%" class='text-center'>การรับเข้าเรียน</th>
+                                            <th width="5%" class='text-center'>ประเภทผู้เรียน</th>
+                                            <th width="10%" class='text-center'>สถานะ</th>
+                                            <th width="15%" class='text-center'>ปีที่เข้าเรียน</th>
+                                            <th width="15%" class='text-center'>รหัสสาขา</th>
+                                            <th width="15%" class='text-center'>รหัสชั้นเรียน</th>
+                                            <th width="15%" class='text-center'>ชื่อผู้ใช้</th>
+                                            <th width="15%" class='text-center'>รหัสผ่าน</th>
+                                            <th width="5%" class='text-center'>แก้ไข</th>
+                                            <th width="5%" class='text-center'>ลบ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php
+                                        // Query data to display in the table
+                                        require_once '../config/connect.php';
+                                        $stmt = $condb->prepare("SELECT * FROM student");
+                                        $stmt->execute();
+                                        $result = $stmt->fetchAll(PDO::FETCH_ASSOC); // Use FETCH_ASSOC for better data handling
+                                        foreach ($result as $stu) {
+                                        ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($stu['student_id']); ?></td>
+                                            <td><?= htmlspecialchars($stu['ID_card']); ?></td>
+                                            <td><?= htmlspecialchars($stu['name']); ?></td>
+                                            <td><?= htmlspecialchars($stu['phone']); ?></td>
+                                            <td><?= htmlspecialchars($stu['admit']); ?></td>
+                                            <td><?= htmlspecialchars($stu['learner_type']); ?></td>
+                                            <td><?= htmlspecialchars($stu['student_status']); ?></td>
+                                            <td><?= htmlspecialchars($stu['enrollment_year']); ?></td>
+                                            <td><?= htmlspecialchars($stu['major_id']); ?></td>
+                                            <td><?= htmlspecialchars($stu['class_id']); ?></td>
+                                            <td><?= htmlspecialchars($stu['username']); ?></td>
+                                            <td><?= htmlspecialchars(strlen($stu['password']) > 10 ? substr($stu['password'], 0, 10) . '...' : $stu['password']); ?></td>
+
+                                            <td class='text-center'>
+                                                <a href="student_edit.php?student_id=<?= urlencode($stu['student_id']); ?>" class="btn btn-warning btn-sm">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </td>
+                                            <td class='text-center'>
+                                                <a href="student_del.php?student_id=<?= urlencode($stu['student_id']); ?>" class="btn btn-danger btn-sm delete-button">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <?php } ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- /.card-body -->
+                        </div>
+                        <!-- /.card -->
+                    </div>
+                    <!-- /.col -->
+                </div>
+                <!-- /.row -->
+            </div>
+            <!-- /.container-fluid -->
+        </section>
+        <!-- /.content -->
+    </div>
+    <!-- /.content-wrapper -->
+
+    <!-- jQuery, Popper.js, and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- SheetJS (xlsx) JS -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+    <script>
+        function confirmDelete(e) {
+            e.preventDefault();
+            var urlToRedirect = e.currentTarget.getAttribute('href');
+
+            Swal.fire({
+                title: 'คุณแน่ใจหรือไม่?',
+                text: 'ข้อมูลนี้จะถูกลบออก!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'ใช่, ลบ!',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = urlToRedirect;
+                }
+            });
+        }
+
+        document.querySelectorAll('.delete-button').forEach(button => {
+            button.addEventListener('click', confirmDelete);
+        });
+        // Display success or error messages based on query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('success')) {
+        Swal.fire({
+            title: 'สำเร็จ!',
+            text: "ข้อมูลถูกลบเรียบร้อยแล้ว",
+            icon: 'success',
+            confirmButtonText: 'ตกลง'
+        });
+    } else if (urlParams.has('error')) {
+        let errorMessage = '';
+        switch (urlParams.get('error')) {
+            case 'foreign_key':
+                errorMessage = 'ไม่สามารถลบข้อมูลได้เนื่องจากมีข้อมูลที่เชื่อมโยงอยู่';
+                break;
+            case 'missing_student_id':
+                errorMessage = 'ไม่พบรหัสนักเรียน';
+                break;
+            default:
+                errorMessage = 'เกิดข้อผิดพลาด';
+        }
+        Swal.fire({
+            title: 'ไม่สามารถลบข้อมูลได้!',
+            text: errorMessage,
+            icon: 'error',
+            confirmButtonText: 'ตกลง'
+        });
+    }
+
+        document.getElementById('export-btn').addEventListener('click', function() {
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.table_to_sheet(document.getElementById('example1'), { raw: true });
+
+            // Fixing any potential issues with data in cells
+            ws['!cols'] = [
+                { width: 15 }, 
+                { width: 20 },
+                { width: 20 },
+                { width: 15 },
+                { width: 10 },
+                { width: 10 },
+                { width: 10 },
+                { width: 10 },
+                { width: 10 },
+                { width: 10 },
+                { width: 15 },
+                { width: 15 },
+                { width: 10 },
+                { width: 11 }
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, 'Students');
+            XLSX.writeFile(wb, 'students.xlsx');
+        });
+
+        
+        $(document).ready(function() {
+        $('#upload-file').change(function() {
+            const formData = new FormData($('#upload-form')[0]);
+
+            // Use AJAX to submit the form data
+            $.ajax({
+                url: 'upload_students.php', // Your server-side script
+                type: 'POST',
+                data: formData,
+                contentType: false, // Prevent jQuery from overriding the content type
+                processData: false, // Prevent jQuery from processing the data
+                success: function(response) {
+    // Debugging: log the server response
+    console.log(response);
+
+    // Ensure the response is either an object or a JSON string we can parse
+    let data;
+    try {
+        data = typeof response === 'object' ? response : JSON.parse(response);
+    } catch (error) {
+        console.error('Error parsing response:', error);
+        data = { message: 'อัปโหลดข้อมูลสำเร็จ' }; // Set a default message
+    }
+
+    // Always show the success message and redirect
+    Swal.fire({
+        title: 'สำเร็จ!',
+        text: data.message || 'อัปโหลดข้อมูลสำเร็จ!',
+        icon: 'success',
+        confirmButtonText: 'ตกลง'
+    }).then(() => {
+        // Redirect to students.php after the user clicks the confirm button
+        window.location.href = 'students.php';
+    });
+}
+
+
+            });
+        });
+    });
+
+
+    </script>
+</body>
+</html>
