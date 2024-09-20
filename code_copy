@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>จัดการข้อมูลนักเรียน</title>
+    <title>ฟอร์มเพิ่มข้อมูลแผนการเรียน</title>
     <!-- Bootstrap CSS -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome CSS -->
@@ -12,331 +13,314 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <!-- Custom CSS -->
     <style>
-        /* Custom table header */
-        .thead-dark {
-            background-color: #343a40; /* Dark background */
-            color: #fff; /* White text */
-        }
+    .card-header {
+        background-color: #007bff;
+        color: #fff;
+    }
 
-        /* Card border color */
-        .card.border-primary {
-            border-color: #007bff; /* Primary blue */
-        }
+    .btn-info {
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+    }
 
-        /* Table row hover effect */
-        .table-hover tbody tr:hover {
-            background-color: #f1f1f1; /* Light gray */
-        }
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
 
-        /* Button styles */
-        .btn-primary {
-            background-color: #28a745; /* Green */
-            border-color: #28a745; /* Green */
-        }
+    .advice-card {
+        border-color: #007bff;
+        border-radius: 0.5rem;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    }
 
-        .btn-warning {
-            background-color: #ffc107; /* Yellow */
-            border-color: #ffc107; /* Yellow */
-        }
+    .advice-card .card-header {
+        background-color: #6c757d;
+        color: #fff;
+    }
 
-        .btn-danger {
-            background-color: #dc3545; /* Red */
-            border-color: #dc3545; /* Red */
-        }
+    .btn-fetch-data {
+        background-color: #004d40;
+        /* Dark greenish-blue color */
+        border-color: #004d40;
+        color: #fff;
+        /* White text */
+    }
 
-        /* Text color */
-        .text-primary {
-            color: #007bff; /* Blue */
-        }
-
-        /* Table cell text alignment */
-        .text-center {
-            text-align: center;
-        }
-
-        /* Right-aligned button container */
-        .header-buttons {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-        }
-
-        /* Custom file upload */
-        .custom-file-upload {
-            border: 2px solid #007bff; /* Primary blue */
-            border-radius: 5px; /* Rounded corners */
-            display: inline-block;
-            padding: 10px 20px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            color: #007bff; /* Primary blue */
-            background-color: #f8f9fa; /* Light gray background */
-            transition: background-color 0.3s, color 0.3s; /* Smooth transition for color changes */
-        }
-
-        .custom-file-upload:hover {
-            background-color: #007bff; /* Primary blue on hover */
-            color: #fff; /* White text on hover */
-            border-color: #007bff; /* Primary blue border on hover */
-        }
-
-        .custom-file-upload input[type="file"] {
-            display: none; /* Hide the default file input */
-        }
+    .btn-fetch-data:hover {
+        background-color: #00332d;
+        /* Darker shade for hover */
+        border-color: #00332d;
+    }
     </style>
 </head>
+
 <body>
-    <!-- Content Wrapper. Contains page content -->
+    <!-- Content Wrapper -->
     <div class="content-wrapper">
-        <!-- Content Header (Page header) -->
+        <!-- Content Header -->
         <section class="content-header">
             <div class="container-fluid">
                 <div class="row mb-2">
                     <div class="col-sm-6">
-                        <h1 class="text-primary">
-                            จัดการข้อมูลนักเรียน
-                            <a href="student_add.php" class="btn btn-primary">เพิ่มข้อมูลนักเรียน</a>
-                        </h1>
-                    </div>
-                    <div class="col-sm-6">
-                        <div class="header-buttons">
-                            <!-- Excel export button -->
-                            <button class="btn btn-info ml-2" id="export-btn">
-                                <i class="fas fa-file-excel"></i> ดาวน์โหลด Excel
-                            </button>
-                            <!-- Excel upload button -->
-                            <form id="upload-form" method="POST" enctype="multipart/form-data">
-    <label class="custom-file-upload ml-2">
-        <input type="file" name="upload-file" id="upload-file" accept=".xlsx, .xls">
-        <i class="fas fa-file-upload"></i> อัปโหลด Excel
-    </label>
-</form>
-                        </div>
+                        <h1>ฟอร์มเพิ่มข้อมูลแผนการเรียน</h1>
                     </div>
                 </div>
-            </div><!-- /.container-fluid -->
-        </section>
-
-        <!-- Main content -->
-        <section class="content">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card border-primary">
-                            <!-- /.card-header -->
-                            <div class="card-body">
-                                <style>
-                                    /* Font size for table header */
-                                    .table thead th {
-                                        font-size: 13px; /* Adjust header font size here */
-                                    }
-                                    /* Font size for table body */
-                                    .table tbody td {
-                                        font-size: 13px; /* Adjust body font size here */
-                                    }
-                                </style>
-                                <table id="example1" class="table table-bordered table-striped table-hover">
-                                    <thead class="thead-dark">
-                                        <tr>
-                                            <th width="10%" class='text-center'>รหัสนักเรียน</th>
-                                            <th width="15%" class='text-center'>เลขบัตรประชาชน</th>
-                                            <th width="20%" class='text-center'>ชื่อ-สกุล</th>
-                                            <th width="15%" class='text-center'>เบอร์โทร</th>
-                                            <th width="15%" class='text-center'>การรับเข้าเรียน</th>
-                                            <th width="5%" class='text-center'>ประเภทผู้เรียน</th>
-                                            <th width="10%" class='text-center'>สถานะ</th>
-                                            <th width="15%" class='text-center'>ปีที่เข้าเรียน</th>
-                                            <th width="15%" class='text-center'>รหัสสาขา</th>
-                                            <th width="15%" class='text-center'>รหัสชั้นเรียน</th>
-                                            <th width="15%" class='text-center'>ชื่อผู้ใช้</th>
-                                            <th width="15%" class='text-center'>รหัสผ่าน</th>
-                                            <th width="5%" class='text-center'>แก้ไข</th>
-                                            <th width="5%" class='text-center'>ลบ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        // Query data to display in the table
-                                        require_once '../config/connect.php';
-                                        $stmt = $condb->prepare("SELECT * FROM student");
-                                        $stmt->execute();
-                                        $result = $stmt->fetchAll(PDO::FETCH_ASSOC); // Use FETCH_ASSOC for better data handling
-                                        foreach ($result as $stu) {
-                                        ?>
-                                        <tr>
-                                            <td><?= htmlspecialchars($stu['student_id']); ?></td>
-                                            <td><?= htmlspecialchars($stu['ID_card']); ?></td>
-                                            <td><?= htmlspecialchars($stu['name']); ?></td>
-                                            <td><?= htmlspecialchars($stu['phone']); ?></td>
-                                            <td><?= htmlspecialchars($stu['admit']); ?></td>
-                                            <td><?= htmlspecialchars($stu['learner_type']); ?></td>
-                                            <td><?= htmlspecialchars($stu['student_status']); ?></td>
-                                            <td><?= htmlspecialchars($stu['enrollment_year']); ?></td>
-                                            <td><?= htmlspecialchars($stu['major_id']); ?></td>
-                                            <td><?= htmlspecialchars($stu['class_id']); ?></td>
-                                            <td><?= htmlspecialchars($stu['username']); ?></td>
-                                            <td><?= htmlspecialchars(strlen($stu['password']) > 10 ? substr($stu['password'], 0, 10) . '...' : $stu['password']); ?></td>
-
-                                            <td class='text-center'>
-                                                <a href="student_edit.php?student_id=<?= urlencode($stu['student_id']); ?>" class="btn btn-warning btn-sm">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                            </td>
-                                            <td class='text-center'>
-                                                <a href="student_del.php?student_id=<?= urlencode($stu['student_id']); ?>" class="btn btn-danger btn-sm delete-button">
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                        <?php } ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <!-- /.card-body -->
-                        </div>
-                        <!-- /.card -->
-                    </div>
-                    <!-- /.col -->
-                </div>
-                <!-- /.row -->
             </div>
-            <!-- /.container-fluid -->
         </section>
-        <!-- /.content -->
-    </div>
-    <!-- /.content-wrapper -->
 
-    <!-- jQuery, Popper.js, and Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <!-- SweetAlert2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- SheetJS (xlsx) JS -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
-    <script>
-        function confirmDelete(e) {
-            e.preventDefault();
-            var urlToRedirect = e.currentTarget.getAttribute('href');
+        <!-- Main Content -->
+        <section class="content">
+            <div class="row justify-content-center">
+                <div class="col-md-10">
+                    <div class="card card-outline card-info">
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Main Form -->
+                                <div class="col-md-8">
+                                    <form action="" method="post" id="studyPlanForm">
+                                        <div class="card-body">
+                                            <!-- Subject ID -->
+                                            <div class="form-group row">
+                                                <label class="col-sm-3 col-form-label">รหัสวิชา</label>
+                                                <div class="col-sm-9">
+                                                    <div class="input-group">
+                                                        <input type="text" name="subject_id" class="form-control"
+                                                            required placeholder="รหัสวิชา">
+                                                        <div class="input-group-append">
+                                                            <button type="button"
+                                                                class="btn btn-fetch-data">ดึงข้อมูล</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- Major ID -->
+                                            <div class="form-group row">
+                                                <label class="col-sm-3 col-form-label">รหัสสาขา</label>
+                                                <div class="col-sm-9">
+                                                    <input type="text" name="major_id" class="form-control" required
+                                                        placeholder="รหัสสาขา">
+                                                </div>
+                                            </div>
 
-            Swal.fire({
-                title: 'คุณแน่ใจหรือไม่?',
-                text: 'ข้อมูลนี้จะถูกลบออก!',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'ใช่, ลบ!',
-                cancelButtonText: 'ยกเลิก'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = urlToRedirect;
+                                            <!-- Subject Name -->
+                                            <div class="form-group row">
+                                                <label class="col-sm-3 col-form-label">ชื่อวิชา</label>
+                                                <div class="col-sm-9">
+                                                    <input type="text" name="study_plan_name" class="form-control"
+                                                        required placeholder="ชื่อวิชา">
+                                                </div>
+                                            </div>
+
+                                            <!-- Number of Credits -->
+                                            <div class="form-group row">
+                                                <label class="col-sm-3 col-form-label">หน่วยกิต</label>
+                                                <div class="col-sm-9">
+                                                    <input type="number" name="num_credits" class="form-control"
+                                                        required placeholder="หน่วยกิต">
+                                                </div>
+                                            </div>
+
+                                            <!-- Total Class Hours -->
+                                            <div class="form-group row">
+                                                <label class="col-sm-3 col-form-label">รวมชั่วโมง</label>
+                                                <div class="col-sm-9">
+                                                    <input type="number" name="total_class_hours" class="form-control"
+                                                        required placeholder="รวมชั่วโมง">
+                                                </div>
+                                            </div>
+
+                                            <!-- Theory Hours -->
+                                            <div class="form-group row">
+                                                <label class="col-sm-3 col-form-label">ชั่วโมงทฤษฎี</label>
+                                                <div class="col-sm-9">
+                                                    <input type="number" name="theory_hours" class="form-control"
+                                                        required placeholder="ชั่วโมงทฤษฎี">
+                                                </div>
+                                            </div>
+
+                                            <!-- Practice Hours -->
+                                            <div class="form-group row">
+                                                <label class="col-sm-3 col-form-label">ชั่วโมงปฏิบัติ</label>
+                                                <div class="col-sm-9">
+                                                    <input type="number" name="hours_of_practice" class="form-control"
+                                                        required placeholder="ชั่วโมงปฏิบัติ">
+                                                </div>
+                                            </div>
+
+                                            <!-- School Year -->
+                                            <div class="form-group row">
+                                                <label class="col-sm-3 col-form-label">ปีการศึกษา</label>
+                                                <div class="col-sm-9">
+                                                    <input type="text" name="school_year" class="form-control" required
+                                                        placeholder="ปีการศึกษา">
+                                                </div>
+                                            </div>
+                                            <!-- Semester -->
+                                            <div class="form-group row">
+                                                <label class="col-sm-3 col-form-label">ภาคการศึกษา</label>
+                                                <div class="col-sm-9">
+                                                    <input type="text" name="semester" class="form-control" required
+                                                        placeholder="ภาคการศึกษา">
+                                                </div>
+                                            </div>
+                                            <!-- Class Year -->
+                                            <div class="form-group row">
+                                                <label class="col-sm-3 col-form-label">ชั้นปี</label>
+                                                <div class="col-sm-9">
+                                                    <input type="text" name="class_year" class="form-control" required
+                                                        placeholder="ชั้นปี">
+                                                </div>
+                                            </div>
+                                            <!-- Submit and Cancel Buttons -->
+                                            <div class="form-group row">
+                                                <div class="col-sm-12 text-right">
+                                                    <button type="submit" class="btn btn-info">บันทึกข้อมูล</button>
+                                                    <a href="studyplan.php" class="btn btn-danger">ยกเลิก</a>
+                                                </div>
+                                            </div>
+                                        </div><!-- /.card-body -->
+                                    </form>
+                                </div><!-- /.col-md-8 -->
+
+                                <!-- Advice Card -->
+                                <div class="col-md-4">
+                                    <div class="card advice-card">
+                                        <div class="card-header">
+                                            <h4 class="card-title">คำแนะนำในการเพิ่มข้อมูลแผนการเรียน</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul>
+                                                <li>กรุณากรอกรหัสวิชาที่ถูกต้องตามหลักเกณฑ์ที่กำหนดไว้</li>
+                                                <li>ระบุรหัสสาขาวิชาที่ข้อมูลนี้เกี่ยวข้อง</li>
+                                                <li>กรอกปีการศึกษาที่ต้องการเพิ่มข้อมูล</li>
+                                                <li>เลือกภาคการศึกษาที่ข้อมูลจะถูกบันทึก</li>
+                                                <li>ระบุชั้นปีที่ข้อมูลนี้ใช้</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div><!-- /.col-md-4 -->
+                            </div><!-- /.row -->
+                        </div><!-- /.card-body -->
+                    </div><!-- /.card -->
+                </div><!-- /.col-md-10 -->
+            </div><!-- /.row -->
+        </section><!-- /.content -->
+    </div><!-- /.content-wrapper -->
+    <!-- PHP to Insert Study Plan Data -->
+    <?php
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (isset($_POST['subject_id'], $_POST['major_id'], $_POST['school_year'], $_POST['semester'], $_POST['class_year'])) {
+            require_once '../config/connect.php';
+
+            // รับค่าจากฟอร์มและทำการ sanitize ข้อมูล
+            $subject_id = htmlspecialchars(trim($_POST['subject_id']));
+            $major_id = htmlspecialchars(trim($_POST['major_id']));
+            $school_year = htmlspecialchars(trim($_POST['school_year']));
+            $semester = htmlspecialchars(trim($_POST['semester']));
+            $class_year = htmlspecialchars(trim($_POST['class_year']));
+
+            try {
+                // เริ่ม transaction
+                $condb->beginTransaction();
+
+                // เตรียมคำสั่ง SQL สำหรับเพิ่มข้อมูล
+                $stmtInsertPlan = $condb->prepare("INSERT INTO subject (subject_id, major_id, school_year, semester, class_year) VALUES (:subject_id, :major_id, :school_year, :semester, :class_year)");
+
+                // ผูกค่าที่จะเพิ่มลงในฐานข้อมูล
+                $stmtInsertPlan->bindParam(':subject_id', $subject_id);
+                $stmtInsertPlan->bindParam(':major_id', $major_id);
+                $stmtInsertPlan->bindParam(':school_year', $school_year);
+                $stmtInsertPlan->bindParam(':semester', $semester);
+                $stmtInsertPlan->bindParam(':class_year', $class_year);
+
+                // ดำเนินการเพิ่มข้อมูล
+                if ($stmtInsertPlan->execute()) {
+                    // ยืนยันการเพิ่มข้อมูล
+                    $condb->commit();
+                    echo '<script>
+                        Swal.fire({
+                            icon: "success",
+                            title: "เพิ่มข้อมูลสำเร็จ",
+                            text: "ข้อมูลแผนการเรียนได้ถูกเพิ่มเรียบร้อยแล้ว!",
+                            confirmButtonText: "ตกลง"
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = "study_plan.php";
+                            }
+                        });
+                        </script>';
                 }
-            });
+            } catch (PDOException $e) {
+                // ยกเลิก transaction หากเกิดข้อผิดพลาด
+                $condb->rollBack();
+                echo '<script>
+                    Swal.fire({
+                        icon: "error",
+                        title: "ข้อผิดพลาด",
+                        text: "เกิดข้อผิดพลาด: ' . $e->getMessage() . '",
+                        confirmButtonText: "ตกลง"
+                    });
+                    </script>';
+            }
         }
-
-        document.querySelectorAll('.delete-button').forEach(button => {
-            button.addEventListener('click', confirmDelete);
-        });
-        // Display success or error messages based on query parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('success')) {
-        Swal.fire({
-            title: 'สำเร็จ!',
-            text: "ข้อมูลถูกลบเรียบร้อยแล้ว",
-            icon: 'success',
-            confirmButtonText: 'ตกลง'
-        });
-    } else if (urlParams.has('error')) {
-        let errorMessage = '';
-        switch (urlParams.get('error')) {
-            case 'foreign_key':
-                errorMessage = 'ไม่สามารถลบข้อมูลได้เนื่องจากมีข้อมูลที่เชื่อมโยงอยู่';
-                break;
-            case 'missing_student_id':
-                errorMessage = 'ไม่พบรหัสนักเรียน';
-                break;
-            default:
-                errorMessage = 'เกิดข้อผิดพลาด';
-        }
-        Swal.fire({
-            title: 'ไม่สามารถลบข้อมูลได้!',
-            text: errorMessage,
-            icon: 'error',
-            confirmButtonText: 'ตกลง'
-        });
     }
+    ?>
+    <!-- Bootstrap and jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- SweetAlert2 JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
-        document.getElementById('export-btn').addEventListener('click', function() {
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.table_to_sheet(document.getElementById('example1'), { raw: true });
-
-            // Fixing any potential issues with data in cells
-            ws['!cols'] = [
-                { width: 15 }, 
-                { width: 20 },
-                { width: 20 },
-                { width: 15 },
-                { width: 10 },
-                { width: 10 },
-                { width: 10 },
-                { width: 10 },
-                { width: 10 },
-                { width: 10 },
-                { width: 15 },
-                { width: 15 },
-                { width: 10 },
-                { width: 11 }
-            ];
-
-            XLSX.utils.book_append_sheet(wb, ws, 'Students');
-            XLSX.writeFile(wb, 'students.xlsx');
-        });
-
-        
-        $(document).ready(function() {
-        $('#upload-file').change(function() {
-            const formData = new FormData($('#upload-form')[0]);
-
-            // Use AJAX to submit the form data
-            $.ajax({
-                url: 'upload_students.php', // Your server-side script
-                type: 'POST',
-                data: formData,
-                contentType: false, // Prevent jQuery from overriding the content type
-                processData: false, // Prevent jQuery from processing the data
-                success: function(response) {
-    // Debugging: log the server response
-    console.log(response);
-
-    // Ensure the response is either an object or a JSON string we can parse
-    let data;
-    try {
-        data = typeof response === 'object' ? response : JSON.parse(response);
-    } catch (error) {
-        console.error('Error parsing response:', error);
-        data = { message: 'อัปโหลดข้อมูลสำเร็จ' }; // Set a default message
-    }
-
-    // Always show the success message and redirect
-    Swal.fire({
-        title: 'สำเร็จ!',
-        text: data.message || 'อัปโหลดข้อมูลสำเร็จ!',
-        icon: 'success',
-        confirmButtonText: 'ตกลง'
-    }).then(() => {
-        // Redirect to students.php after the user clicks the confirm button
-        window.location.href = 'students.php';
-    });
-}
-
-
-            });
+    <script>
+    $(document).ready(function() {
+        $('.btn-fetch-data').click(function() {
+            var subject_id = $('input[name="subject_id"]').val();
+            if (subject_id) {
+                $.ajax({
+                    url: 'fetch_subject_data.php',
+                    type: 'POST',
+                    data: { subject_id: subject_id },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            // Populate the form fields with the returned data
+                            $('input[name="major_id"]').val(response.data.major_id);
+                            $('input[name="study_plan_name"]').val(response.data.subject_name);
+                            $('input[name="num_credits"]').val(response.data.num_credits);
+                            $('input[name="total_class_hours"]').val(response.data.total_class_hours);
+                            $('input[name="theory_hours"]').val(response.data.theory_hours);
+                            $('input[name="hours_of_practice"]').val(response.data.hours_of_practice);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'ไม่พบข้อมูล',
+                                text: response.message,
+                                confirmButtonText: 'ตกลง'
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: 'ไม่สามารถดึงข้อมูลได้',
+                            confirmButtonText: 'ตกลง'
+                        });
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'กรุณากรอกรหัสวิชา',
+                    confirmButtonText: 'ตกลง'
+                });
+            }
         });
     });
+</script>
 
-
-    </script>
 </body>
+
 </html>
