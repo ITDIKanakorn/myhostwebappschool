@@ -1,266 +1,132 @@
-<?php
-// เชื่อมต่อฐานข้อมูล
-include('../config/connect.php');
+<!-- Modal for Installment Payment -->
+<div id="installmentModal" style="display:none;">
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0, 0, 0, 0.7);"></div>
+    <div
+        style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background-color:white; padding:30px; border-radius:15px; width:600px; box-shadow:0 4px 20px rgba(0,0,0,0.2);">
+        <h3 style="text-align:center; color:#333;">รายละเอียดการผ่อนชำระ</h3>
+        <p style="text-align:center; color:#555;">แอดมินได้ตั้งค่าการผ่อนชำระสำหรับนักเรียนเรียบร้อยแล้ว:</p>
 
+        <!-- แสดงข้อมูลการผ่อนชำระ -->
+        <div id="installmentDetails" style="margin-bottom:20px;">
+            <p style="font-weight:bold;">จำนวนงวดที่ต้องผ่อน: <strong id="installmentCount">4</strong> งวด</p>
+            <p style="font-weight:bold;">จำนวนเงินทั้งหมดที่ต้องผ่อน: <strong id="totalAmount">4,000 บาท</strong></p>
 
-// สมมติว่า $student_id มาจาก session
-$role = $_SESSION['role'];
-$student_id = isset($_SESSION['student']) ? $_SESSION['student'] : null;
+            <!-- แสดงงวดที่เหลืออยู่ด้านบน -->
+            <p id="remainingInstallments" style="font-weight:bold; margin-top:20px;">งวดที่เหลือ: <span id="remainingCount">4</span> งวด</p>
+            <p style="font-weight:bold;">จำนวนเงินที่ต้องผ่อน: <strong id="remainingAmount">4,000 บาท</strong></p> <!-- จำนวนเงินที่ต้องผ่อน -->
 
+            <!-- แสดงสถานะของแต่ละงวด -->
+            <div id="installmentStatus" style="margin-top:10px;">
+                <p>งวดที่ 1: <span id="installment1Status" style="color:orange;">ยังไม่ชำระเงิน</span></p>
+                <button id="downloadReceipt1" style="padding:5px 10px; background-color:#2196F3; color:white; border:none; border-radius:5px; cursor:pointer; transition: background-color 0.3s;" onclick="payInstallment(1)">ดาวน์โหลดใบชำระค่าลงทะเบียน</button>
 
-try {
-    // คำสั่ง SQL เพื่อดึงข้อมูล payment ตาม student_id
-    $sql = "SELECT p.money_type, p.payment_status ,tps.tuition_payment_slip_number
-            FROM payment p
-            JOIN tuition_payment_slip tps ON p.tuition_payment_slip_number = tps.tuition_payment_slip_number
-            JOIN registration r ON tps.registration_id = r.registration_id
-            WHERE r.student_id = :student_id";
-    $stmt = $condb->prepare($sql);
-    $stmt->bindParam(':student_id', $student_id, PDO::PARAM_STR);
-    $stmt->execute();
+                <p id="installment2" style="display:none;">งวดที่ 2: <span id="installment2Status" style="color:orange;">ยังไม่ชำระเงิน</span></p>
+                <button id="downloadReceipt2" style="display:none; padding:5px 10px; background-color:#2196F3; color:white; border:none; border-radius:5px; cursor:pointer; transition: background-color 0.3s;" onclick="payInstallment(2)">ดาวน์โหลดใบชำระค่าลงทะเบียน</button>
 
+                <p id="installment3" style="display:none;">งวดที่ 3: <span id="installment3Status" style="color:orange;">ยังไม่ชำระเงิน</span></p>
+                <button id="downloadReceipt3" style="display:none; padding:5px 10px; background-color:#2196F3; color:white; border:none; border-radius:5px; cursor:pointer; transition: background-color 0.3s;" onclick="payInstallment(3)">ดาวน์โหลดใบชำระค่าลงทะเบียน</button>
 
-    // ตรวจสอบค่าที่ดึงมา
-    $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                <p id="installment4" style="display:none;">งวดที่ 4: <span id="installment4Status" style="color:orange;">ยังไม่ชำระเงิน</span></p>
+                <button id="downloadReceipt4" style="display:none; padding:5px 10px; background-color:#2196F3; color:white; border:none; border-radius:5px; cursor:pointer; transition: background-color 0.3s;" onclick="payInstallment(4)">ดาวน์โหลดใบชำระค่าลงทะเบียน</button>
+            </div>
+        </div>
 
-
-    $showCashtest = true; // เริ่มต้นเป็น false
-
-
-    // วนลูปเช็คการชำระเงิน
-    foreach ($payments as $payment) {
-    if (($payment['money_type'] == 'Bank Transfer' || $payment['money_type'] == 'Cash Payment')
-    && $payment['payment_status'] == 'succeed') {
-        $showCashtest = false; // ถ้าพบข้อมูลที่ตรงตามเงื่อนไข
-        break; // ออกจากลูปทันทีเมื่อเจอ
-      }
-    }
-
-
-    // คำสั่ง SQL เพื่อดึงข้อมูล registration_status
-    $sql = "SELECT registration_status FROM registration WHERE student_id = :student_id";
-    $stmt = $condb->prepare($sql);
-    $stmt->bindParam(':student_id', $student_id, PDO::PARAM_STR);
-    $stmt->execute();
-
-
-    // ดึงค่าจากผลลัพธ์
-    $registration_status = $stmt->fetchColumn();
-
-
-    // กำหนดค่า $showRegisResult และ $showSchedule เป็น false โดยเริ่มต้น
-    $showRegisResult = false;
-    $showSchedule = false;
-
-
-    $showRegister = true;
-
-
-    // ตรวจสอบเงื่อนไข
-    if ($registration_status == 'succeed') {
-        $showRegisResult = true;
-        $showSchedule = true;
-        $showRegister = false;    
-    }
-   
-} catch (PDOException $e) {
-    echo "Error: " . $e->getMessage();
-}
-?>
-
-<style>
-    /* สไตล์สำหรับเมนูย่อย */
-.nav-treeview {
-    background-color: #2c3e50;
-    padding-left: 20px;
-}
-
-.nav-treeview .nav-item .nav-link {
-    background-color: #34495e;
-    color: #ecf0f1;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 5px;
-    transition: background-color 0.3s ease;
-}
-
-.nav-treeview .nav-item .nav-link:hover {
-    background-color: #1abc9c;
-    color: #fff;
-}
-
-/* ทำให้ไอคอนในเมนูย่อยมีขนาดเล็กลงเล็กน้อย */
-.nav-treeview .nav-link i {
-    font-size: 0.9em;
-    margin-right: 10px;
-}
-
-    </style>
-<!-- Main Sidebar Container -->
-<aside class="main-sidebar sidebar-dark-primary elevation-4">
-    <!-- Brand Logo -->
-
-
-    <a href="javascript:void(0);" class="brand-link"
-        style="display: flex; flex-direction: column; align-items: center; text-align: center;">
-        <img src="../assets/dist/img/logoschool.png" alt="Brand Logo"
-            style="width: 120px; height: auto; margin-bottom: 5px;">
-        <span class="brand-text font-weight-light" style="font-size: 18px;">วิทยาลัยเทคนิคปักธงชัย</span>
-    </a>
-
-
-
-
-    <!-- Sidebar -->
-<div class="sidebar">
-
-
-<!-- Sidebar Menu -->
-<nav class="mt-2">
-    <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-        <?php
-        $studentMenu = [
-            ['href' => '../mainstu/index.php', 'icon' => 'fas fa-home', 'text' => 'หน้าหลัก'],
-            ['href' => '../changepasswordStu/chpassword.php', 'icon' => 'fas fa-key', 'text' => 'เปลี่ยนรหัสผ่าน'],
-            ['href' => '../informationStu/information.php', 'icon' => 'fas fa-graduation-cap', 'text' => 'ประวัตินักเรียน-นักศึกษา'],
-            $showRegister ? ['href' => '../register/register.php', 'icon' => 'fas fa-clipboard-list', 'text' => 'ลงทะเบียนเรียน'] : null,
-             // แสดงปุ่มเหล่านี้เฉพาะเมื่อ $showRegisResult และ $showSchedule เป็น true
-            $showRegisResult ? ['href' => '../regisresult/regisresult.php', 'icon' => 'fas fa-check-circle', 'text' => 'ผลการลงทะเบียน'] : null,
-            $showSchedule ? ['href' => '../schedule/schedule.php', 'icon' => 'fas fa-calendar-alt', 'text' => 'ตารางเรียน'] : null,
-            $showCashtest ? ['href' => '../payment/cashtest.php', 'icon' => 'fas fa-money-bill-wave', 'text' => 'ส่งหลักฐานการชำระเงิน'] : null,
-            ['href' => '../loghistoryStu/loghistory.php', 'icon' => 'fas fa-history', 'text' => 'ประวัติการเข้าใช้ระบบ'],
-            ['href' => '../loginregis.php', 'icon' => 'fas fa-sign-out-alt','id' => 'logout-link', 'text' => 'ออกจากระบบ']
-        ];
-        // กรองค่า null ออก
-        $studentMenu = array_filter($studentMenu);
-       
- 
-       
-        $adminMenu = [
-            ['href' => '../mainadmin/index.php', 'icon' => 'fas fa-home', 'text' => 'หน้าหลัก'],
-            ['href' => '../chpasswordAdmin/chpassword.php', 'icon' => 'fas fa-key', 'text' => 'เปลี่ยนรหัสผ่าน'],
-        
-            // Grouped under 'จัดการข้อมูลทั้งหมด'
-            [
-                'text' => 'จัดการข้อมูลทั้งหมด', 'icon' => 'fas fa-tools', 'submenu' => [
-                    ['href' => '../student/students.php', 'icon' => 'fas fa-user-graduate', 'text' => 'จัดการข้อมูลนักศึกษา'],
-                    ['href' => '../major/major.php', 'icon' => 'fa fa-folder-open', 'text' => 'จัดการข้อมูลสาขาวิชา'],
-                    ['href' => '../subject/subject.php', 'icon' => 'fas fa-book', 'text' => 'จัดการข้อมูลรายวิชา'],
-                    ['href' => '../studyplan/studyplan.php', 'icon' => 'fas fa-tasks', 'text' => 'จัดการข้อมูลแผนการเรียน'],
-                    ['href' => '../fee/fee.php', 'icon' => 'fas fa-money-bill-wave', 'text' => 'จัดการข้อมูลค่าธรรมเนียม']
-                ]
-            ],
-        
-            ['href' => '../mcregis/mcregis.php', 'icon' => 'fas fa-check-circle', 'text' => 'ตรวจสอบการลงทะเบียน'],
-            ['href' => '../tuitionfee/tuitionfee.php', 'icon' => 'fas fa-money-check-alt', 'text' => 'ยืนยันการลงทะเบียน'],
-            ['href' => '../paycash/paycash.php', 'icon' => 'fas fa-coins', 'text' => 'การชำระเงินสด'],
-            ['href' => '../Installment/Installment.php', 'icon' => 'fas fa-hand-holding-usd', 'text' => 'ตั้งค่าการผ่อนชำระ'],
-
-            ['href' => '../loghistoryAdmin/loghistory.php', 'icon' => 'fas fa-history', 'text' => 'ประวัติการเข้าใช้ระบบ'],
-            
-            ['href' => '../loginregis.php', 'icon' => 'fas fa-sign-out-alt', 'id' => 'logout-link', 'text' => 'ออกจากระบบ']
-        ];
-        
-       
-        // Assuming you already have the user role stored in $_SESSION['role']
-        $menuItems = [];
-
-if ($_SESSION['role'] === 'student') {
-    $menuItems = $studentMenu;
-} elseif ($_SESSION['role'] === 'teacher') {
-    $menuItems = $adminMenu; // ใช้เมนูสำหรับแอดมิน
-}
-
-// ทำการแสดงเมนู
-foreach ($menuItems as $item) {
-    $id = isset($item['id']) ? ' id="' . htmlspecialchars($item['id']) . '"' : '';
-
-    // ถ้ามี submenu แสดงผลเมนูหลักและแสดงผลเมนูย่อย
-    if (isset($item['submenu'])) {
-        echo '<li class="nav-item has-treeview">';
-        echo '<a href="#" class="nav-link" style="' . (isset($item['style']) ? $item['style'] : 'background-color: #1f2d3d; padding: 10px; border-radius: 5px; margin-bottom: 5px;') . '">';
-        echo '<i class="nav-icon ' . htmlspecialchars($item['icon']) . '"></i>';
-        echo '<p>' . htmlspecialchars($item['text']) . ' <i class="right fas fa-angle-left"></i></p>';
-        echo '</a>';
-        
-        // เริ่มเมนูย่อย
-        echo '<ul class="nav nav-treeview">';
-        foreach ($item['submenu'] as $submenuItem) {
-            echo '<li class="nav-item">';
-            echo '<a href="' . htmlspecialchars($submenuItem['href']) . '" class="nav-link" style="' . (isset($submenuItem['style']) ? $submenuItem['style'] : '') . '">';
-            echo '<i class="nav-icon ' . htmlspecialchars($submenuItem['icon']) . '"></i>';
-            echo '<p>' . htmlspecialchars($submenuItem['text']) . '</p>';
-            echo '</a>';
-            echo '</li>';
-        }
-        echo '</ul>';
-        echo '</li>';
-    } else {
-        // แสดงผลเมนูปกติ (ไม่มี submenu)
-        echo '<li class="nav-item">';
-        echo '<a href="' . htmlspecialchars($item['href']) . '" class="nav-link"' . $id . ' style="' . (isset($item['style']) ? $item['style'] : 'background-color: #1f2d3d; padding: 10px; border-radius: 5px; margin-bottom: 5px;') . '">';
-        echo '<i class="nav-icon ' . htmlspecialchars($item['icon']) . '"></i>';
-        echo '<p>' . htmlspecialchars($item['text']) . '</p>';
-        echo '</a>';
-        echo '</li>';
-    }
-}
-        
-        
-        ?>
-    </ul>
-</nav>
-<!-- /.sidebar-menu -->
+        <div style="text-align:center;">
+            <button onclick="window.location.href='your_empty_page.html'" style="padding:10px 15px; background-color:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; transition: background-color 0.3s;">ส่งหลักฐานการผ่อนชำระ</button>
+            <button id="payInstallment2" style="display:none; padding:10px 15px; background-color:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; transition: background-color 0.3s;" onclick="payInstallment(2)">ชำระงวดที่ 2</button>
+            <button id="payInstallment3" style="display:none; padding:10px 15px; background-color:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; transition: background-color 0.3s;" onclick="payInstallment(3)">ชำระงวดที่ 3</button>
+            <button id="payInstallment4" style="display:none; padding:10px 15px; background-color:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; transition: background-color 0.3s;" onclick="payInstallment(4)">ชำระงวดที่ 4</button>
+            <button onclick="closeModal()" style="padding:10px 15px; background-color:#f44336; color:white; border:none; border-radius:5px; cursor:pointer; transition: background-color 0.3s; margin-left: 10px;">ยกเลิก</button>
+        </div>
+    </div>
 </div>
-<!-- /.sidebar -->
-</aside>
-
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
-<script>
-document.getElementById('logout-link').addEventListener('click', function(e) {
-    e.preventDefault(); // ป้องกันการดำเนินการตามลิงก์ปกติ
-
-
-    Swal.fire({
-        title: 'คุณแน่ใจหรือไม่?',
-        text: "คุณต้องการออกจากระบบหรือไม่?",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#1064ff',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'ใช่, ออกจากระบบ!',
-        cancelButtonText: 'ยกเลิก'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // เปลี่ยน URL ไปยังหน้าออกจากระบบ
-            window.location.href = '../logout.php';
-        }
-    });
-});
-
-document.querySelectorAll('.nav-item.has-treeview > a').forEach(function(item) {
-    item.addEventListener('click', function(e) {
-        e.preventDefault();
-        let submenu = this.nextElementSibling;
-        if (submenu.style.display === 'none' || submenu.style.display === '') {
-            submenu.style.display = 'block';
-        } else {
-            submenu.style.display = 'none';
-        }
-    });
-});
-
-</script>
 
 
 
+---------------------------------------------------------------------------------------------------------------------------------
 
+// Total amount for installments
+const totalInstallments = 4; // จำนวนงวดทั้งหมด
+const amountPerInstallment = 1000; // จำนวนเงินต่อหนึ่งงวด
+let remainingAmount = totalInstallments * amountPerInstallment; // จำนวนเงินที่คงเหลือ
 
+// แสดงจำนวนเงินทั้งหมดใน modal
+document.getElementById("totalAmount").innerText = remainingAmount + " บาท"; 
+// แสดงจำนวนเงินที่ต้องผ่อนใน modal
+document.getElementById("remainingAmount").innerText = remainingAmount + " บาท"; 
 
+function payInstallment(installmentNumber) {
+    // อัปเดตสถานะการชำระเงินตามหมายเลขงวด
+    if (installmentNumber === 1) {
+        document.getElementById("installment1Status").innerText = "ชำระแล้ว: 1,000 บาท🎉"; // อัปเดตสถานะงวดที่ 1
+        document.getElementById("installment1Status").style.color = "green"; // เปลี่ยนสีเป็นเขียวเมื่อชำระเงินแล้ว
+        document.getElementById("downloadReceipt1").style.display = "none"; // ซ่อนปุ่มดาวน์โหลดใบเสร็จสำหรับงวดที่ 1
+        document.getElementById("installment2").style.display = "block"; // แสดงงวดที่ 2
+        document.getElementById("downloadReceipt2").style.display = "block"; // แสดงปุ่มดาวน์โหลดสำหรับงวดที่ 2
+        remainingAmount -= amountPerInstallment; // ลดจำนวนเงินที่ต้องผ่อน
+        updateRemainingAmount(); // อัปเดตจำนวนเงินที่ต้องผ่อน
+        updateRemainingInstallments(); // อัปเดตงวดที่เหลือ
+    } else if (installmentNumber === 2) {
+        document.getElementById("installment2Status").innerText = "ชำระแล้ว: 1,000 บาท🎉"; // อัปเดตสถานะงวดที่ 2
+        document.getElementById("installment2Status").style.color = "green"; // เปลี่ยนสีเป็นเขียวเมื่อชำระเงินแล้ว
+        document.getElementById("downloadReceipt2").style.display = "none"; // ซ่อนปุ่มดาวน์โหลดใบเสร็จสำหรับงวดที่ 2
+        document.getElementById("installment3").style.display = "block"; // แสดงงวดที่ 3
+        document.getElementById("downloadReceipt3").style.display = "block"; // แสดงปุ่มดาวน์โหลดสำหรับงวดที่ 3
+        remainingAmount -= amountPerInstallment; // ลดจำนวนเงินที่ต้องผ่อน
+        updateRemainingAmount(); // อัปเดตจำนวนเงินที่ต้องผ่อน
+        updateRemainingInstallments(); // อัปเดตงวดที่เหลือ
+    } else if (installmentNumber === 3) {
+        document.getElementById("installment3Status").innerText = "ชำระแล้ว: 1,000 บาท🎉"; // อัปเดตสถานะงวดที่ 3
+        document.getElementById("installment3Status").style.color = "green"; // เปลี่ยนสีเป็นเขียวเมื่อชำระเงินแล้ว
+        document.getElementById("downloadReceipt3").style.display = "none"; // ซ่อนปุ่มดาวน์โหลดใบเสร็จสำหรับงวดที่ 3
+        document.getElementById("installment4").style.display = "block"; // แสดงงวดที่ 4
+        document.getElementById("downloadReceipt4").style.display = "block"; // แสดงปุ่มดาวน์โหลดสำหรับงวดที่ 4
+        remainingAmount -= amountPerInstallment; // ลดจำนวนเงินที่ต้องผ่อน
+        updateRemainingAmount(); // อัปเดตจำนวนเงินที่ต้องผ่อน
+        updateRemainingInstallments(); // อัปเดตงวดที่เหลือ
+    } else if (installmentNumber === 4) {
+        document.getElementById("installment4Status").innerText = "ชำระแล้ว: 1,000 บาท🎉"; // อัปเดตสถานะงวดที่ 4
+        document.getElementById("installment4Status").style.color = "green"; // เปลี่ยนสีเป็นเขียวเมื่อชำระเงินแล้ว
+        document.getElementById("downloadReceipt4").style.display = "none"; // ซ่อนปุ่มดาวน์โหลดใบเสร็จสำหรับงวดที่ 4
+        remainingAmount -= amountPerInstallment; // ลดจำนวนเงินที่ต้องผ่อน
+        updateRemainingAmount(); // อัปเดตจำนวนเงินที่ต้องผ่อน
+        updateRemainingInstallments(); // อัปเดตงวดที่เหลือ
+    }
+}
 
+function updateRemainingAmount() {
+    // อัปเดตจำนวนเงินที่ต้องผ่อน
+    document.getElementById("remainingAmount").innerText = remainingAmount + " บาท"; 
 
+    // ตรวจสอบว่าจำนวนเงินที่ต้องผ่อนเป็น 0 หรือไม่
+    if (remainingAmount === 0) {
+        document.getElementById("remainingAmount").innerHTML = "<span style='color: green;'>ผ่อนครบแล้ว 🎉</span>"; // แสดงข้อความว่าผ่อนครบแล้ว
+    }
+}
 
+function updateRemainingInstallments() {
+    const totalInstallments = 4; // จำนวนงวดทั้งหมด
+    let paidInstallments = 0; // จำนวนงวดที่ชำระแล้ว
 
+    // นับจำนวนงวดที่ชำระเงินแล้ว
+    if (document.getElementById("installment1Status").innerText.includes("ชำระแล้ว")) paidInstallments++;
+    if (document.getElementById("installment2Status").innerText.includes("ชำระแล้ว")) paidInstallments++;
+    if (document.getElementById("installment3Status").innerText.includes("ชำระแล้ว")) paidInstallments++;
+    if (document.getElementById("installment4Status").innerText.includes("ชำระแล้ว")) paidInstallments++;
 
+    const remainingInstallments = totalInstallments - paidInstallments; // คำนวณจำนวนงวดที่เหลือ
+    document.getElementById("remainingCount").innerText = remainingInstallments; // อัปเดตจำนวนงวดที่เหลือ
 
+    // ตรวจสอบว่าจำนวนงวดที่เหลือเป็น 0 หรือไม่
+    if (remainingInstallments === 0) {
+        document.getElementById("remainingCount").innerHTML = "<span style='color: green;'>ผ่อนครบแล้ว 🎉</span>"; // แสดงข้อความว่าผ่อนครบแล้ว
+    }
+}
+
+function closeModal() {
+    document.getElementById("installmentModal").style.display = "none"; // ปิด modal
+}
+
+// เรียกใช้งานฟังก์ชันในที่ที่ต้องการ เช่น การเริ่มต้น
+updateRemainingAmount();
+updateRemainingInstallments();
