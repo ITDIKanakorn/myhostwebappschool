@@ -1,87 +1,266 @@
+<?php
+// เชื่อมต่อฐานข้อมูล
+include('../config/connect.php');
 
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Navbar with Icons</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/3.5.0/css/flag-icon.min.css">
-    <style>
-        .dropdown-item:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-        }
+// สมมติว่า $student_id มาจาก session
+$role = $_SESSION['role'];
+$student_id = isset($_SESSION['student']) ? $_SESSION['student'] : null;
+
+
+try {
+    // คำสั่ง SQL เพื่อดึงข้อมูล payment ตาม student_id
+    $sql = "SELECT p.money_type, p.payment_status ,tps.tuition_payment_slip_number
+            FROM payment p
+            JOIN tuition_payment_slip tps ON p.tuition_payment_slip_number = tps.tuition_payment_slip_number
+            JOIN registration r ON tps.registration_id = r.registration_id
+            WHERE r.student_id = :student_id";
+    $stmt = $condb->prepare($sql);
+    $stmt->bindParam(':student_id', $student_id, PDO::PARAM_STR);
+    $stmt->execute();
+
+
+    // ตรวจสอบค่าที่ดึงมา
+    $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+
+    $showCashtest = true; // เริ่มต้นเป็น false
+
+
+    // วนลูปเช็คการชำระเงิน
+    foreach ($payments as $payment) {
+    if (($payment['money_type'] == 'Bank Transfer' || $payment['money_type'] == 'Cash Payment')
+    && $payment['payment_status'] == 'succeed') {
+        $showCashtest = false; // ถ้าพบข้อมูลที่ตรงตามเงื่อนไข
+        break; // ออกจากลูปทันทีเมื่อเจอ
+      }
+    }
+
+
+    // คำสั่ง SQL เพื่อดึงข้อมูล registration_status
+    $sql = "SELECT registration_status FROM registration WHERE student_id = :student_id";
+    $stmt = $condb->prepare($sql);
+    $stmt->bindParam(':student_id', $student_id, PDO::PARAM_STR);
+    $stmt->execute();
+
+
+    // ดึงค่าจากผลลัพธ์
+    $registration_status = $stmt->fetchColumn();
+
+
+    // กำหนดค่า $showRegisResult และ $showSchedule เป็น false โดยเริ่มต้น
+    $showRegisResult = false;
+    $showSchedule = false;
+
+
+    $showRegister = true;
+
+
+    // ตรวจสอบเงื่อนไข
+    if ($registration_status == 'succeed') {
+        $showRegisResult = true;
+        $showSchedule = true;
+        $showRegister = false;    
+    }
+   
+} catch (PDOException $e) {
+    echo "Error: " . $e->getMessage();
+}
+?>
+
+<style>
+    /* สไตล์สำหรับเมนูย่อย */
+.nav-treeview {
+    background-color: #2c3e50;
+    padding-left: 20px;
+}
+
+.nav-treeview .nav-item .nav-link {
+    background-color: #CC0033;
+    color: #ecf0f1;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.nav-treeview .nav-item .nav-link:hover {
+    background-color: #1abc9c;
+    color: #fff;
+}
+
+/* ทำให้ไอคอนในเมนูย่อยมีขนาดเล็กลงเล็กน้อย */
+.nav-treeview .nav-link i {
+    font-size: 0.9em;
+    margin-right: 10px;
+}
+
     </style>
-</head>
-<body>
+<!-- Main Sidebar Container -->
+<aside class="main-sidebar sidebar-dark-primary elevation-4">
+    <!-- Brand Logo -->
 
-<!-- Navbar -->
-<nav class="main-header navbar navbar-expand navbar-white navbar-light" style="background-color: #AD1D28;">
-    <!-- Left navbar links -->
-    <ul class="navbar-nav">
-        <li class="nav-item">
-            <a class="nav-link" data-widget="pushmenu" href="#" role="button" style="color: white;">
-                <i class="fas fa-bars"></i>
-            </a>
-        </li>
-    </ul>
 
-    <!-- Right navbar links -->
-    <ul class="navbar-nav ml-auto">
+    <a href="javascript:void(0);" class="brand-link"
+        style="display: flex; flex-direction: column; align-items: center; text-align: center;">
+        <img src="../assets/dist/img/logoschool.png" alt="Brand Logo"
+            style="width: 120px; height: auto; margin-bottom: 5px;">
+        <span class="brand-text font-weight-light" style="font-size: 18px;">วิทยาลัยเทคนิคปักธงชัย</span>
+    </a>
+
+
+
+
+    <!-- Sidebar -->
+<div class="sidebar">
+
+
+<!-- Sidebar Menu -->
+<nav class="mt-2">
+    <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
         <?php
-        if (isset($_SESSION['user'])) {
-            // Determine the profile image based on the user's role
-            $profileImage = '';
-            if (isset($_SESSION['role']) && $_SESSION['role'] == 'teacher') {
-                $profileImage = '../assets/dist/img/teacher.png'; // Replace with the teacher's profile image path
-            } elseif (isset($_SESSION['role']) && $_SESSION['role'] == 'student') {
-                $profileImage = '../assets/dist/img/stu.png'; // Replace with the student's profile image path
-            }
+        $studentMenu = [
+            ['href' => '../mainstu/index.php', 'icon' => 'fas fa-home', 'text' => 'หน้าหลัก'],
+            ['href' => '../changepasswordStu/chpassword.php', 'icon' => 'fas fa-key', 'text' => 'เปลี่ยนรหัสผ่าน'],
+            ['href' => '../informationStu/information.php', 'icon' => 'fas fa-graduation-cap', 'text' => 'ประวัตินักเรียน-นักศึกษา'],
+            $showRegister ? ['href' => '../register/register.php', 'icon' => 'fas fa-clipboard-list', 'text' => 'ลงทะเบียนเรียน'] : null,
+             // แสดงปุ่มเหล่านี้เฉพาะเมื่อ $showRegisResult และ $showSchedule เป็น true
+            $showRegisResult ? ['href' => '../regisresult/regisresult.php', 'icon' => 'fas fa-check-circle', 'text' => 'ผลการลงทะเบียน'] : null,
+            $showSchedule ? ['href' => '../schedule/schedule.php', 'icon' => 'fas fa-calendar-alt', 'text' => 'ตารางเรียน'] : null,
+            $showCashtest ? ['href' => '../payment/cashtest.php', 'icon' => 'fas fa-money-bill-wave', 'text' => 'ส่งหลักฐานการชำระเงิน'] : null,
+            ['href' => '../loghistoryStu/loghistory.php', 'icon' => 'fas fa-history', 'text' => 'ประวัติการเข้าใช้ระบบ'],
+            ['href' => '../loginregis.php', 'icon' => 'fas fa-sign-out-alt','id' => 'logout-link', 'text' => 'ออกจากระบบ']
+        ];
+        // กรองค่า null ออก
+        $studentMenu = array_filter($studentMenu);
+       
+ 
+       
+        $adminMenu = [
+            ['href' => '../mainadmin/index.php', 'icon' => 'fas fa-home', 'text' => 'หน้าหลัก'],
+            ['href' => '../chpasswordAdmin/chpassword.php', 'icon' => 'fas fa-key', 'text' => 'เปลี่ยนรหัสผ่าน'],
+        
+            // Grouped under 'จัดการข้อมูลทั้งหมด'
+            [
+                'text' => 'จัดการข้อมูลทั้งหมด', 'icon' => 'fas fa-tools', 'submenu' => [
+                    ['href' => '../student/students.php', 'icon' => 'fas fa-user-graduate', 'text' => 'จัดการข้อมูลนักศึกษา'],
+                    ['href' => '../major/major.php', 'icon' => 'fa fa-folder-open', 'text' => 'จัดการข้อมูลสาขาวิชา'],
+                    ['href' => '../subject/subject.php', 'icon' => 'fas fa-book', 'text' => 'จัดการข้อมูลรายวิชา'],
+                    ['href' => '../studyplan/studyplan.php', 'icon' => 'fas fa-tasks', 'text' => 'จัดการข้อมูลแผนการเรียน'],
+                    ['href' => '../fee/fee.php', 'icon' => 'fas fa-money-bill-wave', 'text' => 'จัดการข้อมูลค่าธรรมเนียม']
+                ]
+            ],
+        
+            ['href' => '../mcregis/mcregis.php', 'icon' => 'fas fa-check-circle', 'text' => 'ตรวจสอบการลงทะเบียน'],
+            ['href' => '../tuitionfee/tuitionfee.php', 'icon' => 'fas fa-money-check-alt', 'text' => 'ยืนยันการลงทะเบียน'],
+            ['href' => '../paycash/paycash.php', 'icon' => 'fas fa-coins', 'text' => 'การชำระเงินสด'],
+            ['href' => '../Installment/Installment.php', 'icon' => 'fas fa-hand-holding-usd', 'text' => 'ตั้งค่าการผ่อนชำระ'],
 
-            echo '<li class="nav-item d-none d-sm-inline-block">
-                  <a class="nav-link text-white" style="display: flex; align-items: center; font-weight: bold; padding: 0 15px;">
-                      <span style="margin-right: 10px; font-size: 19px;" data-translate="username">
-                           ' . htmlspecialchars($_SESSION['user']) . '
-                      </span>
-                      <img src="' . htmlspecialchars($profileImage) . '" alt="Profile Picture" style="width: 35px; height: 35px; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.3);">
-                  </a>
-                  </li>';
+            ['href' => '../loghistoryAdmin/loghistory.php', 'icon' => 'fas fa-history', 'text' => 'ประวัติการเข้าใช้ระบบ'],
+            
+            ['href' => '../loginregis.php', 'icon' => 'fas fa-sign-out-alt', 'id' => 'logout-link', 'text' => 'ออกจากระบบ']
+        ];
+        
+       
+        // Assuming you already have the user role stored in $_SESSION['role']
+        $menuItems = [];
+
+if ($_SESSION['role'] === 'student') {
+    $menuItems = $studentMenu;
+} elseif ($_SESSION['role'] === 'teacher') {
+    $menuItems = $adminMenu; // ใช้เมนูสำหรับแอดมิน
+}
+
+// ทำการแสดงเมนู
+foreach ($menuItems as $item) {
+    $id = isset($item['id']) ? ' id="' . htmlspecialchars($item['id']) . '"' : '';
+
+    // ถ้ามี submenu แสดงผลเมนูหลักและแสดงผลเมนูย่อย
+    if (isset($item['submenu'])) {
+        echo '<li class="nav-item has-treeview">';
+        echo '<a href="#" class="nav-link" style="' . (isset($item['style']) ? $item['style'] : 'background-color: #1f2d3d; padding: 10px; border-radius: 5px; margin-bottom: 5px;') . '">';
+        echo '<i class="nav-icon ' . htmlspecialchars($item['icon']) . '"></i>';
+        echo '<p>' . htmlspecialchars($item['text']) . ' <i class="right fas fa-angle-left"></i></p>';
+        echo '</a>';
+        
+        // เริ่มเมนูย่อย
+        echo '<ul class="nav nav-treeview">';
+        foreach ($item['submenu'] as $submenuItem) {
+            echo '<li class="nav-item">';
+            echo '<a href="' . htmlspecialchars($submenuItem['href']) . '" class="nav-link" style="' . (isset($submenuItem['style']) ? $submenuItem['style'] : '') . '">';
+            echo '<i class="nav-icon ' . htmlspecialchars($submenuItem['icon']) . '"></i>';
+            echo '<p>' . htmlspecialchars($submenuItem['text']) . '</p>';
+            echo '</a>';
+            echo '</li>';
         }
+        echo '</ul>';
+        echo '</li>';
+    } else {
+        // แสดงผลเมนูปกติ (ไม่มี submenu)
+        echo '<li class="nav-item">';
+        echo '<a href="' . htmlspecialchars($item['href']) . '" class="nav-link"' . $id . ' style="' . (isset($item['style']) ? $item['style'] : 'background-color: #1f2d3d; padding: 10px; border-radius: 5px; margin-bottom: 5px;') . '">';
+        echo '<i class="nav-icon ' . htmlspecialchars($item['icon']) . '"></i>';
+        echo '<p>' . htmlspecialchars($item['text']) . '</p>';
+        echo '</a>';
+        echo '</li>';
+    }
+}
+        
+        
         ?>
-
-        <!-- Language Switch Icon -->
-        <li class="nav-item d-none d-sm-inline-block dropdown">
-            <a class="nav-link text-white dropdown-toggle" href="#" role="button" id="languageDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding: 0 15px; display: flex; align-items: center;">
-                <i class="fas fa-language" style="font-size: 24px; line-height: 1.5;"></i>
-            </a>
-            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="languageDropdown">
-                <a class="dropdown-item" href="#" data-lang="en">
-                    <i class="flag-icon flag-icon-us"></i> English
-                </a>
-                <a class="dropdown-item" href="#" data-lang="th">
-                    <i class="flag-icon flag-icon-th"></i> ภาษาไทย
-                </a>
-                <a class="dropdown-item" href="#" data-lang="ar">
-                    <i class="flag-icon flag-icon-sa"></i> العربية
-                </a>
-            </div>
-        </li>
     </ul>
 </nav>
+<!-- /.sidebar-menu -->
+</div>
+<!-- /.sidebar -->
+</aside>
 
 
-<!-- jQuery, Bootstrap JS -->
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-
-<!-- Script to change language dynamically -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script>
- 
+document.getElementById('logout-link').addEventListener('click', function(e) {
+    e.preventDefault(); // ป้องกันการดำเนินการตามลิงก์ปกติ
+
+
+    Swal.fire({
+        title: 'คุณแน่ใจหรือไม่?',
+        text: "คุณต้องการออกจากระบบหรือไม่?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#1064ff',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'ใช่, ออกจากระบบ!',
+        cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // เปลี่ยน URL ไปยังหน้าออกจากระบบ
+            window.location.href = '../logout.php';
+        }
+    });
+});
+
+document.querySelectorAll('.nav-item.has-treeview > a').forEach(function(item) {
+    item.addEventListener('click', function(e) {
+        e.preventDefault();
+        let submenu = this.nextElementSibling;
+        if (submenu.style.display === 'none' || submenu.style.display === '') {
+            submenu.style.display = 'block';
+        } else {
+            submenu.style.display = 'none';
+        }
+    });
+});
+
 </script>
 
-</body>
-</html>
+
+
+
+
+
+
+
+
+
+
+
