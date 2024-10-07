@@ -32,15 +32,14 @@ $condb->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Class Schedule</title>
+    <title>ตารางเรียน</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         table {
             margin-left: 300px;
             margin-top: 20px;
             border-collapse: collapse;
-            max-width: 100%; 
-            margin-bottom: 200px;
+            max-width: 100%;
         }
 
         th, td {
@@ -64,6 +63,11 @@ $condb->close();
 
         .schedule-cell {
             background-color: #cce5ff;
+        }
+
+        .lunch-break {
+            background-color: #ffcccb;
+            font-weight: bold;
         }
 
         .info-section {
@@ -117,57 +121,33 @@ $condb->close();
             echo "<tr>";
             echo "<th class='day-column'>{$day}</th>";
 
-            $previous_class = null;
-            $colspan = 1; // จำนวนช่องที่ต้องรวมเริ่มต้นเป็น 1
+            for ($i = 8; $i < 17; $i++) {
+                $current_time = sprintf('%02d:00', $i); // เวลาในรูปแบบ HH:00
 
-            for ($i = 0; $i < 8; $i++) {
-                $current_time = ($i + 8) . ":00"; // เวลาในแต่ละช่อง
-                $found = false;
+                if ($current_time == "12:00") {
+                    // แสดงพักกลางวันในช่วงเวลา 12:00-13:00
+                    echo "<td class='lunch-break'>พักกลางวัน</td>";
+                    continue; // ข้ามช่วงเวลา 12:00-13:00
+                }
+
+                $found = false; // ใช้ตรวจสอบว่าพบวิชาในช่วงเวลานั้นหรือไม่
 
                 foreach ($schedule as $class) {
-                    // แปลงเวลาเริ่มและจบเป็น H:i
                     $start_time = DateTime::createFromFormat('H:i:s', trim($class['start_time']));
                     $end_time = DateTime::createFromFormat('H:i:s', trim($class['end_time']));
 
-                    // ตรวจสอบว่ามีการสร้าง DateTime object สำเร็จหรือไม่
-                    if ($start_time && $end_time) {
-                        // ใช้ format('H:i') เพื่อเปรียบเทียบเวลา
-                        if ($class['study_date'] == $day && ($start_time->format('H:i') <= $current_time && $end_time->format('H:i') > $current_time)) {
-                            if ($previous_class === $class) {
-                                $colspan++; // ถ้าเป็นวิชาเดิมก็รวม colspan
-                            } else {
-                                if ($previous_class !== null) {
-                                    // แสดงเซลก่อนหน้านี้
-                                    echo "<td class='schedule-cell' colspan='{$colspan}'>{$previous_class['subject_id']}<br>{$previous_class['section_name']}<br>ห้อง {$previous_class['classroom']}<br> {$previous_class['name_sername']}</td>";
-                                }
-                                $colspan = 1; // รีเซ็ตจำนวน colspan
-                                $previous_class = $class; // อัพเดตวิชาก่อนหน้า
-                            }
-                            $found = true;
-                            break;
-                        }
-                    } else {
-                        echo "Invalid time format for class: " . json_encode($class) . "<br>";
+                    // ตรวจสอบว่าช่วงเวลาอยู่ในขอบเขตของวิชาหรือไม่
+                    if ($class['study_date'] == $day && $start_time && $end_time && 
+                        $start_time->format('H:i') <= $current_time && $end_time->format('H:i') > $current_time) {
+                        echo "<td class='schedule-cell'>{$class['subject_id']}<br>{$class['section_name']}<br>ห้อง {$class['classroom']}<br>{$class['name_sername']}</td>";
+                        $found = true;
+                        break; // หยุดการค้นหาถ้าพบวิชา
                     }
                 }
 
                 if (!$found) {
-                    // ถ้าไม่มีวิชาที่ตรงกับช่วงเวลานั้น
-                    if ($previous_class !== null) {
-                        echo "<td class='schedule-cell' colspan='{$colspan}'>{$previous_class['subject_id']}<br>{$previous_class['section_name']}<br>ห้อง {$previous_class['classroom']}<br> {$previous_class['name_sername']}</td>";
-                        $previous_class = null;
-                        $colspan = 1; // รีเซ็ต colspan
-                    } else {
-                        echo "<td></td>"; // ช่องว่างถ้าไม่มีวิชา
-                    }
+                    echo "<td></td>"; // ถ้าไม่มีวิชาในช่วงเวลานั้นให้แสดงเซลล์ว่าง
                 }
-            }
-
-            // ตรวจสอบเซลสุดท้ายในแถว
-            if ($previous_class !== null) {
-                echo "<td class='schedule-cell' colspan='{$colspan}'>{$previous_class['subject_id']}<br>{$previous_class['section_name']}<br>ห้อง {$previous_class['classroom']}<br> {$previous_class['name_sername']}</td>";
-            } else {
-                echo "<td></td>"; // เพิ่มเซลว่างสำหรับเซลสุดท้ายที่อาจหายไป
             }
 
             echo "</tr>";
