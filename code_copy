@@ -39,18 +39,20 @@ $condb->close();
             margin-left: 300px;
             margin-top: 20px;
             border-collapse: collapse;
-            max-width: 100%;
+            width: 80%; /* ปรับขนาดตารางให้แคบลง */
         }
 
         th, td {
             border: 1px solid #ccc;
             text-align: center;
-            padding: 8px;
+            padding: 5px; /* ลดขนาด padding เพื่อให้ข้อมูลดูเล็กลง */
+            font-size: 12px; /* ลดขนาดตัวอักษร */
         }
 
         th {
             background-color: #333;
             color: white;
+            width: 150px; /* เพิ่มความกว้างของคอลัมน์หัวตาราง */
         }
 
         .day-column {
@@ -71,7 +73,7 @@ $condb->close();
         }
 
         .info-section {
-            font-size: 17px; 
+            font-size: 14px; /* ลดขนาดตัวอักษรในส่วนข้อมูลนักศึกษา */
             margin-left: 300px;
             margin-top: 20px;
             margin-bottom: 20px;
@@ -126,7 +128,7 @@ $condb->close();
 
                 if ($current_time == "12:00") {
                     // แสดงพักกลางวันในช่วงเวลา 12:00-13:00
-                    echo "<td class='lunch-break'>พักกลางวัน</td>";
+                    echo "<td class='lunch-break'></td>";
                     continue; // ข้ามช่วงเวลา 12:00-13:00
                 }
 
