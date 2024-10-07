@@ -8,26 +8,15 @@ if ($condb->connect_error) {
 }
 
 // คำสั่ง SQL สำหรับดึงข้อมูลจากตาราง section และ teacher
-$sql = "
-    SELECT 
-        section.section_name, 
-        section.subject_id, 
-        section.study_date, 
-        section.study_time, 
-        section.classroom, 
-        teacher.name_sername 
-    FROM 
-        section 
-    JOIN 
-        teacher 
-    ON 
-        section.teacher_id = teacher.num_teacher";
+$sql = "SELECT section.section_name, section.subject_id, section.study_date, section.start_time, section.end_time, section.classroom, teacher.name_sername 
+        FROM section 
+        JOIN teacher ON section.teacher_id = teacher.num_teacher";
 $result = $condb->query($sql);
 
 // ตรวจสอบผลลัพธ์และแสดงข้อมูล
 $schedule = array();
 if ($result->num_rows > 0) {
-    while($row = $result->fetch_assoc()) {
+    while ($row = $result->fetch_assoc()) {
         $schedule[] = $row;  // จัดเก็บข้อมูลตารางเรียนลงใน array
     }
 } else {
@@ -117,6 +106,7 @@ $condb->close();
             <th>13:00-14:00</th>
             <th>14:00-15:00</th>
             <th>15:00-16:00</th>
+            <th>16:00-17:00</th>
         </tr>
 
         <?php
@@ -136,24 +126,28 @@ $condb->close();
 
                 foreach ($schedule as $class) {
                     // แปลงเวลาเริ่มและจบเป็น H:i
-                    $timeParts = explode(' - ', $class['study_time']);
-                    $start_time = DateTime::createFromFormat('H.i', str_replace(' น.', '', trim($timeParts[0])))->format('H:i');
-                    $end_time = DateTime::createFromFormat('H.i', str_replace(' น.', '', trim($timeParts[1])))->format('H:i');
+                    $start_time = DateTime::createFromFormat('H:i:s', trim($class['start_time']));
+                    $end_time = DateTime::createFromFormat('H:i:s', trim($class['end_time']));
 
-                    // ตรวจสอบวันและช่วงเวลาที่ตรงกัน
-                    if ($class['study_date'] == $day && ($start_time <= $current_time && $end_time > $current_time)) {
-                        if ($previous_class === $class) {
-                            $colspan++; // ถ้าเป็นวิชาเดิมก็รวม colspan
-                        } else {
-                            if ($previous_class !== null) {
-                                // แสดงเซลก่อนหน้านี้
-                                echo "<td class='schedule-cell' colspan='{$colspan}'>{$previous_class['subject_id']}<br>{$previous_class['section_name']}<br>ห้อง {$previous_class['classroom']}<br> {$previous_class['name_sername']}</td>";
+                    // ตรวจสอบว่ามีการสร้าง DateTime object สำเร็จหรือไม่
+                    if ($start_time && $end_time) {
+                        // ใช้ format('H:i') เพื่อเปรียบเทียบเวลา
+                        if ($class['study_date'] == $day && ($start_time->format('H:i') <= $current_time && $end_time->format('H:i') > $current_time)) {
+                            if ($previous_class === $class) {
+                                $colspan++; // ถ้าเป็นวิชาเดิมก็รวม colspan
+                            } else {
+                                if ($previous_class !== null) {
+                                    // แสดงเซลก่อนหน้านี้
+                                    echo "<td class='schedule-cell' colspan='{$colspan}'>{$previous_class['subject_id']}<br>{$previous_class['section_name']}<br>ห้อง {$previous_class['classroom']}<br> {$previous_class['name_sername']}</td>";
+                                }
+                                $colspan = 1; // รีเซ็ตจำนวน colspan
+                                $previous_class = $class; // อัพเดตวิชาก่อนหน้า
                             }
-                            $colspan = 1; // รีเซ็ตจำนวน colspan
-                            $previous_class = $class; // อัพเดตวิชาก่อนหน้า
+                            $found = true;
+                            break;
                         }
-                        $found = true;
-                        break;
+                    } else {
+                        echo "Invalid time format for class: " . json_encode($class) . "<br>";
                     }
                 }
 
@@ -186,14 +180,14 @@ $condb->close();
             fetch('../fetch/fetch_student_info.php')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById("student-id").innerHTML = "รหัสนักศึกษา: " + data.student_id;
-                    document.getElementById("student-name").innerHTML = "ชื่อ-นามสกุล: " + data.student_name;
-                    document.getElementById("student-status").innerHTML = "สถานภาพ: " + data.student_status;
-                    document.getElementById("class-year").innerHTML = "ชั้น: " + data.class_year;
-                    document.getElementById("study-group").innerHTML = "กลุ่มเรียน: " + data.study_group;
-                    document.getElementById("major-name").innerHTML = "สาขาวิชา: " + data.major_name;
-                    document.getElementById("field-of-work").innerHTML = "สาขางาน: " + data.field_of_work;
-                    document.getElementById("advisor").innerHTML = "อาจารย์ที่ปรึกษา: " + data.advisor;
+                    document.getElementById('student-id').textContent += data['รหัสนักศึกษา'];
+                    document.getElementById('student-name').textContent += data['ชื่อ-นามสกุล'];
+                    document.getElementById('student-status').textContent += data['สถานภาพ'];
+                    document.getElementById('class-year').textContent += data['ชั้น'];
+                    document.getElementById('study-group').textContent += data['กลุ่มเรียน'];
+                    document.getElementById('major-name').textContent += data['สาขาวิชา'];
+                    document.getElementById('field-of-work').textContent += data['สาขางาน'];
+                    document.getElementById('advisor').textContent += data['อาจารย์ที่ปรึกษา'];
                 });
         });
     </script>
