@@ -115,6 +115,9 @@ $condb->close();
             echo "<tr>";
             echo "<th class='day-column'>{$day}</th>";
 
+            $previous_class = null; // เก็บข้อมูลวิชาก่อนหน้า
+            $colspan = 1; // จำนวนช่องที่ต้องรวม
+
             // แสดงตารางเวลาในแต่ละช่อง
             for ($i = 0; $i < 8; $i++) {
                 $found = false; // เริ่มต้นไม่พบวิชา
@@ -128,15 +131,35 @@ $condb->close();
 
                     // ตรวจสอบวันและช่วงเวลาที่ตรงกัน
                     if ($class['study_date'] == $day && ($start_time <= ($i + 8).":00" && $end_time > ($i + 8).":00")) {
-                        echo "<td class='schedule-cell'>{$class['subject_id']}<br>{$class['section_name']}<br>ห้อง {$class['classroom']}<br>ครู {$class['teacher_id']}</td>";
+                        if ($previous_class === $class) {
+                            $colspan++; // หากเป็นวิชาเดียวกับคาบก่อนหน้า ให้เพิ่ม colspan
+                        } else {
+                            if ($previous_class !== null) {
+                                // แสดงเซลที่รวมกันก่อนหน้าหากเปลี่ยนวิชา
+                                echo "<td class='schedule-cell' colspan='{$colspan}'>{$previous_class['subject_id']}<br>{$previous_class['section_name']}<br>ห้อง {$previous_class['classroom']}<br>ครู {$previous_class['teacher_id']}</td>";
+                                $colspan = 1; // รีเซ็ตจำนวน colspan
+                            }
+                            $previous_class = $class; // อัปเดตวิชาก่อนหน้า
+                        }
                         $found = true;
                         break; // พบแล้วออกจากลูป
                     }
                 }
 
                 if (!$found) {
-                    echo "<td>ว่าง</td>"; // แสดงข้อความว่าช่องว่าง
+                    if ($previous_class !== null) {
+                        // แสดงเซลที่รวมกันก่อนหน้าหากไม่มีข้อมูลในช่องนี้
+                        echo "<td class='schedule-cell' colspan='{$colspan}'>{$previous_class['subject_id']}<br>{$previous_class['section_name']}<br>ห้อง {$previous_class['classroom']}<br>ครู {$previous_class['teacher_id']}</td>";
+                        $previous_class = null; // รีเซ็ตข้อมูลวิชาก่อนหน้า
+                    } else {
+                        echo "<td></td>"; // แสดงช่องว่างหากไม่มีวิชา
+                    }
                 }
+            }
+
+            // แสดงเซลที่รวมกันสุดท้ายของแต่ละวัน
+            if ($previous_class !== null) {
+                echo "<td class='schedule-cell' colspan='{$colspan}'>{$previous_class['subject_id']}<br>{$previous_class['section_name']}<br>ห้อง {$previous_class['classroom']}<br>ครู {$previous_class['teacher_id']}</td>";
             }
 
             echo "</tr>";
