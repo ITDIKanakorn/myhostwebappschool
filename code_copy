@@ -37,16 +37,17 @@ $condb->close();
     <style>
         table {
             margin-left: 300px;
+            margin-right: 100px; /* เพิ่ม margin-right เพื่อให้ตารางห่างจากขอบขวา */
             margin-top: 20px;
             border-collapse: collapse;
-            width: 80%; /* ปรับขนาดตารางให้แคบลง */
+            width: 78%; /* ปรับขนาดตารางให้แคบลง */
         }
 
         th, td {
             border: 1px solid #ccc;
             text-align: center;
             padding: 5px; /* ลดขนาด padding เพื่อให้ข้อมูลดูเล็กลง */
-            font-size: 12px; /* ลดขนาดตัวอักษร */
+            font-size: 11px; /* ลดขนาดตัวอักษร */
         }
 
         th {
