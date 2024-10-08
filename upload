@@ -1,65 +1,204 @@
- <script>
-    // Fetch the course data and populate the table
-    function formatTime(time) {
-    // แปลงเวลาเป็นรูปแบบ HH:mm
-    return time ? time.slice(0, 5) : ''; // ถ้า time มีค่าให้ตัดเอาเฉพาะ HH:mm
+<?php
+// เชื่อมต่อกับฐานข้อมูล MySQL
+require_once '../config/connect.php';
+
+try {
+
+    $class_id = $_SESSION['class'];
+    $major_id = $_SESSION['major'];
+    // คำสั่ง SQL สำหรับดึงข้อมูลจากตาราง section และ teacher
+    $sql = "SELECT 
+        s.subject_id , 
+        s.subject_name , 
+        s.num_credits , 
+        sec.section_name ,
+        sec.classroom ,
+        sec.study_date ,
+        sec.start_time ,  -- เปลี่ยนชื่อจาก study_time เป็น start_time
+        sec.end_time ,      -- เพิ่ม end_time
+        t.name_sername 
+    FROM 
+        subject s
+    JOIN 
+        section sec ON s.subject_id = sec.subject_id
+    JOIN 
+        teacher t ON sec.teacher_id = t.num_teacher
+    WHERE 
+        sec.class_id = '$class_id' 
+        AND s.major_id = '$major_id';";
+
+    // เตรียมและดำเนินการคำสั่ง SQL
+    $stmt = $condb->prepare($sql);
+    $stmt->execute();
+
+    // ดึงผลลัพธ์ข้อมูลทั้งหมด
+    $schedule = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // ตรวจสอบผลลัพธ์และแสดงข้อมูล
+    if (!empty($schedule)) {
+        // ข้อมูลตารางเรียนถูกจัดเก็บลงใน array
+       // print_r($schedule);  // แสดงผลสำหรับทดสอบ
+    } else {
+        echo "ไม่พบข้อมูล";
+    }
+} catch (PDOException $e) {
+    echo "Error: " . $e->getMessage();
 }
 
-function fetchCourses() {
-    fetch('../fetch/fetch_courses.php')
-        .then(response => response.json())
-        .then(data => {
-            const tableBody = document.querySelector('#resultTable tbody');
-            tableBody.innerHTML = ''; // Clear any existing data
-
-            if (data.length > 0) {
-                data.forEach(course => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td class='text-center'>${course['รหัสวิชา']}</td>
-                        <td>${course['ชื่อวิชา']}</td>
-                        <td class='text-center'>${course['หน่วยกิต']}</td>
-                        <td class='text-center'>${course['Sec.']}</td>
-                        <td class='text-center'>${course['ห้องเรียน']}</td>
-                        <td>${course['วันที่เรียน']} ${formatTime(course['เวลาเริ่ม'])} - ${formatTime(course['เวลาเลิก'])}</td>
-                        <td>${course['ชื่อผู้สอน']}</td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            } else {
-                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No courses found.</td></tr>';
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching course data:', error);
-            Swal.fire('Error', 'Failed to fetch course data. Please try again later.', 'error');
-        });
-}
-
-// Call the function when the page loads
-window.onload = fetchCourses;
+// ปิดการเชื่อมต่อฐานข้อมูล
+$condb = null;
+?>
 
 
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตารางเรียน</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        table {
+            margin-left: 300px;
+            margin-right: 100px; /* เพิ่ม margin-right เพื่อให้ตารางห่างจากขอบขวา */
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 78%; /* ปรับขนาดตารางให้แคบลง */
+        }
 
-    document.getElementById('goToPayment').addEventListener('click', function (event) {
-            event.preventDefault(); // Prevent the default link behavior
+        th, td {
+            border: 1px solid #ccc;
+            text-align: center;
+            padding: 5px; /* ลดขนาด padding เพื่อให้ข้อมูลดูเล็กลง */
+            font-size: 12px; /* ลดขนาดตัวอักษร */
+        }
 
+        th {
+            background-color: #333;
+            color: white;
+            width: 150px; /* เพิ่มความกว้างของคอลัมน์หัวตาราง */
+        }
 
-            Swal.fire({
-                title: 'กำลังโหลด',
-                text: 'กำลังไปยังหน้าชำระค่าเล่าเรียน...',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading(); // Show the loading spinner
+        .day-column {
+            width: 10%;
+        }
+
+        .time-column {
+            width: 12%;
+        }
+
+        .schedule-cell {
+            background-color: #cce5ff;
+        }
+
+        .lunch-break {
+            background-color: #ffcccb;
+            font-weight: bold;
+        }
+
+        .info-section {
+            font-size: 14px; /* ลดขนาดตัวอักษรในส่วนข้อมูลนักศึกษา */
+            margin-left: 300px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .heading-registered-subjects {
+            color: orange;
+            font-weight: bold;
+            margin-left: 300px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h3 class="heading-registered-subjects">ตารางเรียนของรายวิชาที่ลงทะเบียนไว้แล้ว</h3>
+
+    <div class="info-section">
+        <p id="student-id">รหัสนักศึกษา : </p>
+        <p id="student-name">ชื่อ-นามสกุล : </p>
+        <p id="student-status">สถานภาพ : </p>
+        <p id="class-year">ชั้น : </p>
+        <p id="study-group">กลุ่มเรียน : </p>
+        <p id="major-name">สาขาวิชา : </p>
+        <p id="field-of-work">สาขางาน : </p>
+        <p id="advisor">อาจารย์ที่ปรึกษา : </p>
+    </div>
+
+    <table>
+        <tr>
+            <th class="time-column">Day/Time</th>
+            <th>8:00-9:00</th>
+            <th>9:00-10:00</th>
+            <th>10:00-11:00</th>
+            <th>11:00-12:00</th>
+            <th>12:00-13:00</th>
+            <th>13:00-14:00</th>
+            <th>14:00-15:00</th>
+            <th>15:00-16:00</th>
+            <th>16:00-17:00</th>
+        </tr>
+
+        <?php
+        // รายชื่อวัน
+        $days = ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์'];
+
+        foreach ($days as $day) {
+            echo "<tr>";
+            echo "<th class='day-column'>{$day}</th>";
+
+            for ($i = 8; $i < 17; $i++) {
+                $current_time = sprintf('%02d:00', $i); // เวลาในรูปแบบ HH:00
+
+                if ($current_time == "12:00") {
+                    // แสดงพักกลางวันในช่วงเวลา 12:00-13:00
+                    echo "<td class='lunch-break'></td>";
+                    continue; // ข้ามช่วงเวลา 12:00-13:00
                 }
-            });
 
+                $found = false; // ใช้ตรวจสอบว่าพบวิชาในช่วงเวลานั้นหรือไม่
 
-            // Redirect after a short delay to allow the loading message to appear
-            setTimeout(() => {
-                window.location.href = '../payment/cash.php';
-            }, 1000); // Adjust the delay as needed
+                foreach ($schedule as $class) {
+                    $start_time = DateTime::createFromFormat('H:i:s', trim($class['start_time']));
+                    $end_time = DateTime::createFromFormat('H:i:s', trim($class['end_time']));
+
+                    // ตรวจสอบว่าช่วงเวลาอยู่ในขอบเขตของวิชาหรือไม่
+                    if ($class['study_date'] == $day && $start_time && $end_time && 
+                        $start_time->format('H:i') <= $current_time && $end_time->format('H:i') > $current_time) {
+                        echo "<td class='schedule-cell'>{$class['subject_id']}<br>{$class['section_name']}<br>ห้อง {$class['classroom']}<br>{$class['name_sername']}</td>";
+                        $found = true;
+                        break; // หยุดการค้นหาถ้าพบวิชา
+                    }
+                }
+
+                if (!$found) {
+                    echo "<td></td>"; // ถ้าไม่มีวิชาในช่วงเวลานั้นให้แสดงเซลล์ว่าง
+                }
+            }
+
+            echo "</tr>";
+        }
+        ?>
+    </table>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('../fetch/fetch_student_info.php')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('student-id').textContent += data['รหัสนักศึกษา'];
+                    document.getElementById('student-name').textContent += data['ชื่อ-นามสกุล'];
+                    document.getElementById('student-status').textContent += data['สถานภาพ'];
+                    document.getElementById('class-year').textContent += data['ชั้น'];
+                    document.getElementById('study-group').textContent += data['กลุ่มเรียน'];
+                    document.getElementById('major-name').textContent += data['สาขาวิชา'];
+                    document.getElementById('field-of-work').textContent += data['สาขางาน'];
+                    document.getElementById('advisor').textContent += data['อาจารย์ที่ปรึกษา'];
+                });
         });
-
-
     </script>
+</body>
+</html>
