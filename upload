@@ -1,65 +1,65 @@
-<?php
-require 'vendor/autoload.php';
-require_once '../config/connect.php';
-
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-
-// Check if file is uploaded
-if (isset($_FILES['upload-file']) && $_FILES['upload-file']['error'] == UPLOAD_ERR_OK) {
-    $filePath = $_FILES['upload-file']['tmp_name'];
-
-    // Read the Excel file
-    $spreadsheet = IOFactory::load($filePath);
-    $worksheet = $spreadsheet->getActiveSheet();
-    $rows = $worksheet->toArray();
-
-    // Skip the first row (header)
-    unset($rows[0]);
-
-    // Prepare the SQL query for updating data
-    $stmt = $condb->prepare("
-        INSERT INTO student (
-            student_id, ID_card, name, phone, admit, learner_type,student_status,
-            enrollment_year, major_id, class_id, username, password
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-            ID_card = VALUES(ID_card),
-            name = VALUES(name),
-            phone = VALUES(phone),
-            admit = VALUES(admit),
-            learner_type = VALUES(learner_type),
-            student_status = VALUES(student_status),
-            enrollment_year = VALUES(enrollment_year),
-            major_id = VALUES(major_id),
-            class_id = VALUES(class_id),
-            username = VALUES(username),
-            password = VALUES(password)
-    ");
-
-    // Update data for each row
-    foreach ($rows as $row) {
-        // Debug student_id
-        echo "Inserting student_id: " . $row[0] . "<br>";
-
-        $stmt->execute([
-            $row[0], // student_id
-            $row[1], // ID_card
-            $row[2], // name
-            $row[3], // phone
-            $row[4], // admit
-            $row[5], // learner_type
-            $row[6], // student_status
-            $row[7], // enrollment_year
-            $row[8], // major_id
-            $row[9], // class_id
-            $row[10], // username
-            $row[11] // password
-        ]);
-    }
-
-    echo json_encode(["message" => "Data updated successfully!"]);
-} else {
-    echo json_encode(["message" => "File upload error!"]);
+ <script>
+    // Fetch the course data and populate the table
+    function formatTime(time) {
+    // แปลงเวลาเป็นรูปแบบ HH:mm
+    return time ? time.slice(0, 5) : ''; // ถ้า time มีค่าให้ตัดเอาเฉพาะ HH:mm
 }
-?>
+
+function fetchCourses() {
+    fetch('../fetch/fetch_courses.php')
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.querySelector('#resultTable tbody');
+            tableBody.innerHTML = ''; // Clear any existing data
+
+            if (data.length > 0) {
+                data.forEach(course => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class='text-center'>${course['รหัสวิชา']}</td>
+                        <td>${course['ชื่อวิชา']}</td>
+                        <td class='text-center'>${course['หน่วยกิต']}</td>
+                        <td class='text-center'>${course['Sec.']}</td>
+                        <td class='text-center'>${course['ห้องเรียน']}</td>
+                        <td>${course['วันที่เรียน']} ${formatTime(course['เวลาเริ่ม'])} - ${formatTime(course['เวลาเลิก'])}</td>
+                        <td>${course['ชื่อผู้สอน']}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No courses found.</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching course data:', error);
+            Swal.fire('Error', 'Failed to fetch course data. Please try again later.', 'error');
+        });
+}
+
+// Call the function when the page loads
+window.onload = fetchCourses;
+
+
+
+    document.getElementById('goToPayment').addEventListener('click', function (event) {
+            event.preventDefault(); // Prevent the default link behavior
+
+
+            Swal.fire({
+                title: 'กำลังโหลด',
+                text: 'กำลังไปยังหน้าชำระค่าเล่าเรียน...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading(); // Show the loading spinner
+                }
+            });
+
+
+            // Redirect after a short delay to allow the loading message to appear
+            setTimeout(() => {
+                window.location.href = '../payment/cash.php';
+            }, 1000); // Adjust the delay as needed
+        });
+
+
+    </script>
