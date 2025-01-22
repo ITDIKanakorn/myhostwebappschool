@@ -1,0 +1,155 @@
+
+CREATE   PROCEDURE pkgscrwltf001_wltf001a_grid_insert_item_work(
+  @piTransactionId      typTransId_Char
+  , @piWarehouseCode    typWarehouseCode_Char
+  , @piTransferNo       typDocNo_Char
+  , @piTransferHeaderId typHeaderId_Char
+  , @piUser             typUsername_Char
+  , @piPageStart        typCount_Int
+  , @piPageLimit        typCount_Int
+  , @poTotal            typCount_Int OUTPUT
+) AS
+/*****************************************************************************
+  NAME:      pkgscrwltf001_wltf001a_grid_insert_item_work
+  PURPOSE:   Grid item insert work
+
+  REVISIONS:
+  Ver.    Date        Author           Description
+  ------  ----------  ---------------  --------------------------------------
+  1.0     23/11/2022  Piyapat_j.       1. Initial convert this function to SQL Serve.
+  1.1     04/01/2023  Piyapat J.       1. Remove Begin Transaction.
+  1.2     20/01/2023  thanapon K.      1. Change data type and clear variable.
+  1.3     11/07/2023  Paitoon P.       1. Add selected columns to display.
+  1.4     22/08/2023  Paitoon P.       1. Dis code wms.pkgwmsstkutil_get_available_stock_out
+  1.5     22/08/2023  Paitoon P.       1. Adds wms.pkgwmsstkutil_get_available_stock_out
+  1.6     20/02/2024  its-Thaneth J.   1. Adds Manage by Pole/Bill
+  1.7     27/02/2024  its-Noppol S.    1. Declare and use varUserLang for function.
+*****************************************************************************/
+BEGIN
+  SET NOCOUNT ON;
+
+  DECLARE @conStockUnitNo typParamNo_BigInt;
+  DECLARE @varTotal       typCount_Int;
+  DECLARE @varUserLang    typParamEntry_Char;
+
+  SET @conStockUnitNo = 207
+  SET @varUserLang = wms.pkgwmslov_find_user_language(@piUser);
+  BEGIN TRY
+
+    INSERT INTO wltf001a_itm_work(
+      itmtranid
+      , itmstat
+      , itmdirt
+      , itmchk
+      , itmseq
+      , itmltddtlid
+      , itmver
+      , itmitmid
+      , itmitmcd
+      , itmitmdesc
+      , itmitmcapunt
+      , itmitmstkun
+      , itmitmaviqty
+      , itmsrcstgtypcd
+      , itmsrcstgbin
+      , itmqty
+      , itmplantyp
+      , itmplanbin
+      , itmputtyp
+      , itmputbin
+      , itmbysn
+      , itmbatch
+      , itmsnno
+      , itmpeano
+      , itmpoleno
+      , itmnote
+      , itmreelno
+      , itmprbno
+    )
+    SELECT
+      @piTransactionId
+      , NULL
+      , NULL
+      , NULL
+      , A.*
+    FROM(
+      SELECT
+      	wltd.ltdseq
+        , wltd.ltddtlid
+        , wltd.ltdupddat
+        , wltd.ltditmid
+        , gnl.itmitmcd
+        , wms.pkgwmsutil_display_by_lang(@varUserLang, gnl.itmedesc, gnl.itmldesc) AS itmdesc
+        , gnl.itmcapa
+        , pmd.pmdtbdentcd
+        , wms.pkgwmsstkutil_get_available_stock_out(@piWarehouseCode, wltd.ltdsrcstgtyp, wltd.ltdsrcstgbin, wltd.ltditmid, @piTransferNo, NULL, wltd.ltdbatch) AS stkoutdesc
+        , wltd.ltdsrcstgtyp
+        , wltd.ltdsrcstgbin
+        , SUM(wltd.ltdqty) AS sumltdqty
+        , wltd.ltdplantyp
+        , wltd.ltdplanbin
+        , wltd.ltdputtyp
+        , wltd.ltdputbin
+        , wgnl.itmbysn
+        , wltd.ltdbatch
+        , wltd.ltdsnno
+        , wltd.ltdpeano
+        , wltd.ltdpoleno
+        , wltd.ltdnote
+        , wltd.ltdreelno
+        , wgnl.itmbypb
+      FROM wltfdtl wltd
+      JOIN wltfhdr wlth ON wlth.lthhdrid = wltd.ltdhdrid
+      JOIN witmgnl wgnl ON wgnl.itmitmid = wltd.ltditmid
+      LEFT JOIN itmgnl gnl ON gnl.itmitmid = wgnl.itmitmid
+      LEFT JOIN prmtbldtl pmd ON pmd.pmdtbdtbno = @conStockUnitNo AND pmd.pmdtbdentcd = gnl.itmstkun
+      WHERE wlth.lthwhcd = @piWarehouseCode
+        AND wltd.ltdhdrid = @piTransferHeaderId
+        AND (wlth.lthtrfno = @piTransferNo OR wlth.lthdocsap = @piTransferNo)
+      GROUP BY
+        wltd.ltddtlid
+        , wltd.ltdupddat
+        , wltd.ltditmid
+        , gnl.itmitmcd
+        , gnl.itmedesc
+        , gnl.itmldesc
+        , gnl.itmcapa
+        , gnl.itmstkun
+        , wltd.ltdsrcstgtyp
+        , wltd.ltdsrcstgbin
+        , wltd.ltdplantyp
+        , wltd.ltdplanbin
+        , wltd.ltdputtyp
+        , wltd.ltdputbin
+        , wgnl.itmbysn
+        , pmd.pmdtbdedesc
+        , pmd.pmdtbdldesc
+        , wltd.ltdbatch
+        , wltd.ltdsnno
+        , wltd.ltdpeano
+        , wltd.ltdpoleno
+        , wltd.ltdnote
+        , wltd.ltdseq
+        , wltd.ltdreelno
+        , wgnl.itmbypb
+        , pmd.pmdtbdentcd
+    ) AS A;
+
+  END TRY
+
+  BEGIN CATCH
+    EXEC wms.pkgwmsutil_get_error_message @piUser;
+  END CATCH
+
+  EXEC wms.pkgscrwltf001_wltf001a_grid_item_load
+    @piTransactionId
+    , NULL
+    , NULL
+    , @piUser
+    , @piPageStart
+    , @piPageLimit
+    , @varTotal OUTPUT
+
+  SET @poTotal = @varTotal;
+
+END;
