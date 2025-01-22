@@ -1,5 +1,4 @@
-
-CREATE   PROCEDURE pkgscrwltf001_wltf001a_grid_insert_item_work(
+CREATE OR ALTER PROCEDURE pkgscrwltf001_wltf001a_grid_insert_item_work(
   @piTransactionId      typTransId_Char
   , @piWarehouseCode    typWarehouseCode_Char
   , @piTransferNo       typDocNo_Char
