@@ -34,6 +34,15 @@ BEGIN
   SET @conStockUnitNo = 207
   SET @varUserLang = wms.pkgwmslov_find_user_language(@piUser);
   BEGIN TRY
+  
+  WITH StockOutCTE AS (
+    SELECT
+        wltd.ltditmid
+        , wltd.ltdbatch
+        , wms.pkgwmsstkutil_get_available_stock_out(@piWarehouseCode, wltd.ltdsrcstgtyp, wltd.ltdsrcstgbin, wltd.ltditmid, @piTransferNo, NULL, wltd.ltdbatch) AS stkoutdesc
+    FROM wltfdtl wltd
+    WHERE wltd.ltdhdrid = @piTransferHeaderId
+)
 
     INSERT INTO wltf001a_itm_work(
       itmtranid
@@ -81,7 +90,7 @@ BEGIN
         , wms.pkgwmsutil_display_by_lang(@varUserLang, gnl.itmedesc, gnl.itmldesc) AS itmdesc
         , gnl.itmcapa
         , pmd.pmdtbdentcd
-        , wms.pkgwmsstkutil_get_available_stock_out(@piWarehouseCode, wltd.ltdsrcstgtyp, wltd.ltdsrcstgbin, wltd.ltditmid, @piTransferNo, NULL, wltd.ltdbatch) AS stkoutdesc
+        , so.stkoutdesc
         , wltd.ltdsrcstgtyp
         , wltd.ltdsrcstgbin
         , SUM(wltd.ltdqty) AS sumltdqty
@@ -97,11 +106,12 @@ BEGIN
         , wltd.ltdnote
         , wltd.ltdreelno
         , wgnl.itmbypb
-      FROM wltfdtl wltd
-      JOIN wltfhdr wlth ON wlth.lthhdrid = wltd.ltdhdrid
+      FROM wltfdtl wltd WITH (NOLOCK)
+      JOIN wltfhdr wlth WITH (NOLOCK) ON wlth.lthhdrid = wltd.ltdhdrid
       JOIN witmgnl wgnl ON wgnl.itmitmid = wltd.ltditmid
       LEFT JOIN itmgnl gnl ON gnl.itmitmid = wgnl.itmitmid
       LEFT JOIN prmtbldtl pmd ON pmd.pmdtbdtbno = @conStockUnitNo AND pmd.pmdtbdentcd = gnl.itmstkun
+      LEFT JOIN StockOutCTE so ON so.ltditmid = wltd.ltditmid AND so.ltdbatch = wltd.ltdbatch
       WHERE wlth.lthwhcd = @piWarehouseCode
         AND wltd.ltdhdrid = @piTransferHeaderId
         AND (wlth.lthtrfno = @piTransferNo OR wlth.lthdocsap = @piTransferNo)
@@ -132,6 +142,7 @@ BEGIN
         , wltd.ltdreelno
         , wgnl.itmbypb
         , pmd.pmdtbdentcd
+        , so.stkoutdesc
     ) AS A;
 
   END TRY
