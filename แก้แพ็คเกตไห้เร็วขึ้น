@@ -44,107 +44,92 @@ BEGIN
     WHERE wltd.ltdhdrid = @piTransferHeaderId
 )
 
-    INSERT INTO wltf001a_itm_work(
-      itmtranid
-      , itmstat
-      , itmdirt
-      , itmchk
-      , itmseq
-      , itmltddtlid
-      , itmver
-      , itmitmid
-      , itmitmcd
-      , itmitmdesc
-      , itmitmcapunt
-      , itmitmstkun
-      , itmitmaviqty
-      , itmsrcstgtypcd
-      , itmsrcstgbin
-      , itmqty
-      , itmplantyp
-      , itmplanbin
-      , itmputtyp
-      , itmputbin
-      , itmbysn
-      , itmbatch
-      , itmsnno
-      , itmpeano
-      , itmpoleno
-      , itmnote
-      , itmreelno
-      , itmprbno
-    )
+    MERGE wltf001a_itm_work AS target
+USING (
     SELECT
-      @piTransactionId
-      , NULL
-      , NULL
-      , NULL
-      , A.*
-    FROM(
-      SELECT
-      	wltd.ltdseq
-        , wltd.ltddtlid
-        , wltd.ltdupddat
-        , wltd.ltditmid
-        , gnl.itmitmcd
-        , wms.pkgwmsutil_display_by_lang(@varUserLang, gnl.itmedesc, gnl.itmldesc) AS itmdesc
-        , gnl.itmcapa
-        , pmd.pmdtbdentcd
-        , so.stkoutdesc
-        , wltd.ltdsrcstgtyp
-        , wltd.ltdsrcstgbin
-        , SUM(wltd.ltdqty) AS sumltdqty
-        , wltd.ltdplantyp
-        , wltd.ltdplanbin
-        , wltd.ltdputtyp
-        , wltd.ltdputbin
-        , wgnl.itmbysn
-        , wltd.ltdbatch
-        , wltd.ltdsnno
-        , wltd.ltdpeano
-        , wltd.ltdpoleno
-        , wltd.ltdnote
-        , wltd.ltdreelno
-        , wgnl.itmbypb
-      FROM wltfdtl wltd WITH (NOLOCK)
-      JOIN wltfhdr wlth WITH (NOLOCK) ON wlth.lthhdrid = wltd.ltdhdrid
-      JOIN witmgnl wgnl ON wgnl.itmitmid = wltd.ltditmid
-      LEFT JOIN itmgnl gnl ON gnl.itmitmid = wgnl.itmitmid
-      LEFT JOIN prmtbldtl pmd ON pmd.pmdtbdtbno = @conStockUnitNo AND pmd.pmdtbdentcd = gnl.itmstkun
-      LEFT JOIN StockOutCTE so ON so.ltditmid = wltd.ltditmid AND so.ltdbatch = wltd.ltdbatch
-      WHERE wlth.lthwhcd = @piWarehouseCode
-        AND wltd.ltdhdrid = @piTransferHeaderId
-        AND (wlth.lthtrfno = @piTransferNo OR wlth.lthdocsap = @piTransferNo)
-      GROUP BY
-        wltd.ltddtlid
-        , wltd.ltdupddat
-        , wltd.ltditmid
-        , gnl.itmitmcd
-        , gnl.itmedesc
-        , gnl.itmldesc
-        , gnl.itmcapa
-        , gnl.itmstkun
-        , wltd.ltdsrcstgtyp
-        , wltd.ltdsrcstgbin
-        , wltd.ltdplantyp
-        , wltd.ltdplanbin
-        , wltd.ltdputtyp
-        , wltd.ltdputbin
-        , wgnl.itmbysn
-        , pmd.pmdtbdedesc
-        , pmd.pmdtbdldesc
-        , wltd.ltdbatch
-        , wltd.ltdsnno
-        , wltd.ltdpeano
-        , wltd.ltdpoleno
-        , wltd.ltdnote
-        , wltd.ltdseq
-        , wltd.ltdreelno
-        , wgnl.itmbypb
-        , pmd.pmdtbdentcd
-        , so.stkoutdesc
-    ) AS A;
-
+        @piTransactionId AS itmtranid,
+        wltd.ltdseq AS itmseq,
+        wltd.ltddtlid AS itmltddtlid,
+        wltd.ltdupddat AS itmver,
+        wltd.ltditmid AS itmitmid,
+        gnl.itmitmcd AS itmitmcd,
+        wms.pkgwmsutil_display_by_lang(@varUserLang, gnl.itmedesc, gnl.itmldesc) AS itmitmdesc,
+        gnl.itmcapa AS itmitmcapunt,
+        pmd.pmdtbdentcd AS itmitmstkun,
+        so.stkoutdesc AS itmitmaviqty,
+        wltd.ltdsrcstgtyp AS itmsrcstgtypcd,
+        wltd.ltdsrcstgbin AS itmsrcstgbin,
+        SUM(wltd.ltdqty) AS itmqty,
+        wltd.ltdplantyp AS itmplantyp,
+        wltd.ltdplanbin AS itmplanbin,
+        wltd.ltdputtyp AS itmputtyp,
+        wltd.ltdputbin AS itmputbin,
+        wgnl.itmbysn AS itmbysn,
+        wltd.ltdbatch AS itmbatch,
+        wltd.ltdsnno AS itmsnno,
+        wltd.ltdpeano AS itmpeano,
+        wltd.ltdpoleno AS itmpoleno,
+        wltd.ltdnote AS itmnote,
+        wltd.ltdreelno AS itmreelno,
+        wgnl.itmbypb AS itmprbno
+    FROM wltfdtl wltd
+    JOIN wltfhdr wlth ON wlth.lthhdrid = wltd.ltdhdrid
+    JOIN witmgnl wgnl ON wgnl.itmitmid = wltd.ltditmid
+    LEFT JOIN itmgnl gnl ON gnl.itmitmid = wgnl.itmitmid
+    LEFT JOIN prmtbldtl pmd ON pmd.pmdtbdtbno = @conStockUnitNo AND pmd.pmdtbdentcd = gnl.itmstkun
+    LEFT JOIN StockOutCTE so ON so.ltditmid = wltd.ltditmid AND so.ltdbatch = wltd.ltdbatch
+    WHERE wlth.lthwhcd = @piWarehouseCode
+      AND wltd.ltdhdrid = @piTransferHeaderId
+      AND (wlth.lthtrfno = @piTransferNo OR wlth.lthdocsap = @piTransferNo)
+    GROUP BY
+        wltd.ltddtlid, wltd.ltdupddat, wltd.ltditmid, gnl.itmitmcd, gnl.itmedesc, gnl.itmldesc,
+        gnl.itmcapa, gnl.itmstkun, wltd.ltdsrcstgtyp, wltd.ltdsrcstgbin, wltd.ltdplantyp,
+        wltd.ltdplanbin, wltd.ltdputtyp, wltd.ltdputbin, wgnl.itmbysn, pmd.pmdtbdedesc,
+        pmd.pmdtbdldesc, wltd.ltdbatch, wltd.ltdsnno, wltd.ltdpeano, wltd.ltdpoleno,
+        wltd.ltdnote, wltd.ltdseq, wltd.ltdreelno, wgnl.itmbypb, pmd.pmdtbdentcd, so.stkoutdesc
+) AS source
+ON target.itmtranid = source.itmtranid
+   AND target.itmltddtlid = source.itmltddtlid
+   AND target.itmitmid = source.itmitmid
+WHEN MATCHED THEN
+    UPDATE SET
+        target.itmseq = source.itmseq,
+        target.itmver = source.itmver,
+        target.itmitmcd = source.itmitmcd,
+        target.itmitmdesc = source.itmitmdesc,
+        target.itmitmcapunt = source.itmitmcapunt,
+        target.itmitmstkun = source.itmitmstkun,
+        target.itmitmaviqty = source.itmitmaviqty,
+        target.itmsrcstgtypcd = source.itmsrcstgtypcd,
+        target.itmsrcstgbin = source.itmsrcstgbin,
+        target.itmqty = source.itmqty,
+        target.itmplantyp = source.itmplantyp,
+        target.itmplanbin = source.itmplanbin,
+        target.itmputtyp = source.itmputtyp,
+        target.itmputbin = source.itmputbin,
+        target.itmbysn = source.itmbysn,
+        target.itmbatch = source.itmbatch,
+        target.itmsnno = source.itmsnno,
+        target.itmpeano = source.itmpeano,
+        target.itmpoleno = source.itmpoleno,
+        target.itmnote = source.itmnote,
+        target.itmreelno = source.itmreelno,
+        target.itmprbno = source.itmprbno
+WHEN NOT MATCHED THEN
+    INSERT (
+        itmtranid, itmstat, itmdirt, itmchk, itmseq, itmltddtlid, itmver, itmitmid,
+        itmitmcd, itmitmdesc, itmitmcapunt, itmitmstkun, itmitmaviqty, itmsrcstgtypcd,
+        itmsrcstgbin, itmqty, itmplantyp, itmplanbin, itmputtyp, itmputbin, itmbysn,
+        itmbatch, itmsnno, itmpeano, itmpoleno, itmnote, itmreelno, itmprbno
+    )
+    VALUES (
+        source.itmtranid, NULL, NULL, NULL, source.itmseq, source.itmltddtlid, source.itmver,
+        source.itmitmid, source.itmitmcd, source.itmitmdesc, source.itmitmcapunt,
+        source.itmitmstkun, source.itmitmaviqty, source.itmsrcstgtypcd, source.itmsrcstgbin,
+        source.itmqty, source.itmplantyp, source.itmplanbin, source.itmputtyp,
+        source.itmputbin, source.itmbysn, source.itmbatch, source.itmsnno, source.itmpeano,
+        source.itmpoleno, source.itmnote, source.itmreelno, source.itmprbno
+    );
   END TRY
 
   BEGIN CATCH
