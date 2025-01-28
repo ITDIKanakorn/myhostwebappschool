@@ -1,178 +1,183 @@
-<?php
-// เชื่อมต่อกับฐานข้อมูล MySQL
-$condb = new mysqli("localhost", "root", "", "registration_system");
+CREATE OR ALTER PROCEDURE pkgscrwltf001_wltf001a_grid_insert_item_work(
+  @piTransactionId      typTransId_Char
+  , @piWarehouseCode    typWarehouseCode_Char
+  , @piTransferNo       typDocNo_Char
+  , @piTransferHeaderId typHeaderId_Char
+  , @piUser             typUsername_Char
+  , @piPageStart        typCount_Int
+  , @piPageLimit        typCount_Int
+  , @poTotal            typCount_Int OUTPUT
+) AS
+/*****************************************************************************
+  NAME:      pkgscrwltf001_wltf001a_grid_insert_item_work
+  PURPOSE:   Grid item insert work
 
-// ตรวจสอบว่าการเชื่อมต่อสำเร็จหรือไม่
-if ($condb->connect_error) {
-    die("Connection failed: " . $condb->connect_error);
-}
+  REVISIONS:
+  Ver.    Date        Author           Description
+  ------  ----------  ---------------  --------------------------------------
+  1.0     23/11/2022  Piyapat_j.       1. Initial convert this function to SQL Serve.
+  1.1     04/01/2023  Piyapat J.       1. Remove Begin Transaction.
+  1.2     20/01/2023  thanapon K.      1. Change data type and clear variable.
+  1.3     11/07/2023  Paitoon P.       1. Add selected columns to display.
+  1.4     22/08/2023  Paitoon P.       1. Dis code wms.pkgwmsstkutil_get_available_stock_out
+  1.5     22/08/2023  Paitoon P.       1. Adds wms.pkgwmsstkutil_get_available_stock_out
+  1.6     20/02/2024  its-Thaneth J.   1. Adds Manage by Pole/Bill
+  1.7     27/02/2024  its-Noppol S.    1. Declare and use varUserLang for function.
+*****************************************************************************/
+BEGIN
+  SET NOCOUNT ON;
 
-// คำสั่ง SQL สำหรับดึงข้อมูลจากตาราง section และ teacher
-$sql = "SELECT section.section_name, section.subject_id, section.study_date, section.start_time, section.end_time, section.classroom, teacher.name_sername 
-        FROM section 
-        JOIN teacher ON section.teacher_id = teacher.num_teacher";
-$result = $condb->query($sql);
+  DECLARE @conStockUnitNo typParamNo_BigInt;
+  DECLARE @varTotal       typCount_Int;
+  DECLARE @varUserLang    typParamEntry_Char;
+  DECLARE @varAvailableStock    typQty_Num;
+  DECLARE @varMaxDocNo          typDocNo_Char;
 
-// ตรวจสอบผลลัพธ์และแสดงข้อมูล
-$schedule = array();
-if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $schedule[] = $row;  // จัดเก็บข้อมูลตารางเรียนลงใน array
-    }
-} else {
-    echo "ไม่พบข้อมูล";
-}
+  SET @conStockUnitNo = 207
+  SET @varUserLang = wms.pkgwmslov_find_user_language(@piUser);
+  BEGIN TRY
+  
+  
+    SELECT @varMaxDocNo = COALESCE(MAX(sbtdocno), '!@#$%^&*()')
+  FROM wstgbintransout WITH (NOLOCK)
+  WHERE sbtdoctyp IS NULL
+    AND sbtdocno  = @piTransferNo; 
+   
+  WITH temp_stk_bal_qty_CTE AS (
+    SELECT bal.sblwhcd
+      , bal.sblstgtyp
+      , bal.sblstgbin
+      , bal.sblitmid
+      , bal.sblbatch
+      , SUM(COALESCE(bal.sblbalqty, 0)) AS sblbalqty
+    FROM wstkbal bal WITH (NOLOCK)
+    WHERE bal.sblwhcd = @piWarehouseCode
+    GROUP BY bal.sblwhcd
+      , bal.sblstgtyp
+      , bal.sblstgbin
+      , bal.sblitmid
+      , bal.sblbatch
+  )
 
-// ปิดการเชื่อมต่อฐานข้อมูล
-$condb->close();
-?>
+    INSERT INTO wltf001a_itm_work(
+      itmtranid
+      , itmstat
+      , itmdirt
+      , itmchk
+      , itmseq
+      , itmltddtlid
+      , itmver
+      , itmitmid
+      , itmitmcd
+      , itmitmdesc
+      , itmitmcapunt
+      , itmitmstkun
+      , itmitmaviqty
+      , itmsrcstgtypcd
+      , itmsrcstgbin
+      , itmqty
+      , itmplantyp
+      , itmplanbin
+      , itmputtyp
+      , itmputbin
+      , itmbysn
+      , itmbatch
+      , itmsnno
+      , itmpeano
+      , itmpoleno
+      , itmnote
+      , itmreelno
+      , itmprbno
+    )
+    SELECT
+      @piTransactionId
+      , NULL
+      , NULL
+      , NULL
+      , A.*
+    FROM(
+      SELECT
+      	wltd.ltdseq
+        , wltd.ltddtlid
+        , wltd.ltdupddat
+        , wltd.ltditmid
+        , gnl.itmitmcd
+        , wms.pkgwmsutil_display_by_lang(@varUserLang, gnl.itmedesc, gnl.itmldesc) AS itmdesc
+        , gnl.itmcapa
+        , pmd.pmdtbdentcd
+        , (bal.sblbalqty - COALESCE(SUM(CAST(viewout.sbtqty AS NUMERIC(15,3))), 0)) AS stkoutdesc
+        , wltd.ltdsrcstgtyp
+        , wltd.ltdsrcstgbin
+        , SUM(wltd.ltdqty) AS sumltdqty
+        , wltd.ltdplantyp
+        , wltd.ltdplanbin
+        , wltd.ltdputtyp
+        , wltd.ltdputbin
+        , wgnl.itmbysn
+        , wltd.ltdbatch
+        , wltd.ltdsnno
+        , wltd.ltdpeano
+        , wltd.ltdpoleno
+        , wltd.ltdnote
+        , wltd.ltdreelno
+        , wgnl.itmbypb
+      FROM wltfdtl wltd
+      JOIN wltfhdr wlth ON wlth.lthhdrid = wltd.ltdhdrid
+      JOIN witmgnl wgnl ON wgnl.itmitmid = wltd.ltditmid
+	  LEFT JOIN temp_stk_bal_qty_CTE bal ON bal.sblstgtyp = wltd.ltdsrcstgtyp AND bal.sblstgbin = wltd.ltdsrcstgbin AND bal.sblitmid = wltd.ltditmid AND bal.sblbatch = ltdbatch 
+	  LEFT JOIN wstgbintransout viewout ON viewout.sbtwhcd = bal.sblwhcd AND viewout.sbtstgtyp = bal.sblstgtyp
+      AND viewout.sbtstgbin = bal.sblstgbin AND viewout.sbtitmid = bal.sblitmid
+      AND viewout.sbtbatch = bal.sblbatch AND viewout.sbtmovtyp = 'OUT' AND viewout.sbtdocno <> @varMaxDocNo
+      LEFT JOIN itmgnl gnl ON gnl.itmitmid = wgnl.itmitmid
+      LEFT JOIN prmtbldtl pmd ON pmd.pmdtbdtbno = @conStockUnitNo AND pmd.pmdtbdentcd = gnl.itmstkun
+      WHERE wlth.lthwhcd = @piWarehouseCode
+        AND wltd.ltdhdrid = @piTransferHeaderId
+        AND (wlth.lthtrfno = @piTransferNo OR wlth.lthdocsap = @piTransferNo)
+      GROUP BY
+        wltd.ltddtlid
+        , wltd.ltdupddat
+        , wltd.ltditmid
+        , gnl.itmitmcd
+        , gnl.itmedesc
+        , gnl.itmldesc
+        , gnl.itmcapa
+        , gnl.itmstkun
+        , wltd.ltdsrcstgtyp
+        , wltd.ltdsrcstgbin
+        , wltd.ltdplantyp
+        , wltd.ltdplanbin
+        , wltd.ltdputtyp
+        , wltd.ltdputbin
+        , wgnl.itmbysn
+        , pmd.pmdtbdedesc
+        , pmd.pmdtbdldesc
+        , wltd.ltdbatch
+        , wltd.ltdsnno
+        , wltd.ltdpeano
+        , wltd.ltdpoleno
+        , wltd.ltdnote
+        , wltd.ltdseq
+        , wltd.ltdreelno
+        , wgnl.itmbypb
+        , pmd.pmdtbdentcd
+        , bal.sblbalqty
+    ) AS A;
 
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ตารางเรียน</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        table {
-            margin-left: 300px;
-            margin-right: 100px; /* เพิ่ม margin-right เพื่อให้ตารางห่างจากขอบขวา */
-            margin-top: 20px;
-            border-collapse: collapse;
-            width: 78%; /* ปรับขนาดตารางให้แคบลง */
-        }
+  END TRY
 
-        th, td {
-            border: 1px solid #ccc;
-            text-align: center;
-            padding: 5px; /* ลดขนาด padding เพื่อให้ข้อมูลดูเล็กลง */
-            font-size: 11px; /* ลดขนาดตัวอักษร */
-        }
+  BEGIN CATCH
+    EXEC wms.pkgwmsutil_get_error_message @piUser;
+  END CATCH
 
-        th {
-            background-color: #333;
-            color: white;
-            width: 150px; /* เพิ่มความกว้างของคอลัมน์หัวตาราง */
-        }
+  EXEC wms.pkgscrwltf001_wltf001a_grid_item_load
+    @piTransactionId
+    , NULL
+    , NULL
+    , @piUser
+    , @piPageStart
+    , @piPageLimit
+    , @varTotal OUTPUT
 
-        .day-column {
-            width: 10%;
-        }
+  SET @poTotal = @varTotal;
 
-        .time-column {
-            width: 12%;
-        }
-
-        .schedule-cell {
-            background-color: #cce5ff;
-        }
-
-        .lunch-break {
-            background-color: #ffcccb;
-            font-weight: bold;
-        }
-
-        .info-section {
-            font-size: 14px; /* ลดขนาดตัวอักษรในส่วนข้อมูลนักศึกษา */
-            margin-left: 300px;
-            margin-top: 20px;
-            margin-bottom: 20px;
-        }
-
-        .heading-registered-subjects {
-            color: orange;
-            font-weight: bold;
-            margin-left: 300px;
-            margin-top: 20px;
-        }
-    </style>
-</head>
-<body>
-    <h3 class="heading-registered-subjects">ตารางเรียนของรายวิชาที่ลงทะเบียนไว้แล้ว</h3>
-
-    <div class="info-section">
-        <p id="student-id">รหัสนักศึกษา : </p>
-        <p id="student-name">ชื่อ-นามสกุล : </p>
-        <p id="student-status">สถานภาพ : </p>
-        <p id="class-year">ชั้น : </p>
-        <p id="study-group">กลุ่มเรียน : </p>
-        <p id="major-name">สาขาวิชา : </p>
-        <p id="field-of-work">สาขางาน : </p>
-        <p id="advisor">อาจารย์ที่ปรึกษา : </p>
-    </div>
-
-    <table>
-        <tr>
-            <th class="time-column">Day/Time</th>
-            <th>8:00-9:00</th>
-            <th>9:00-10:00</th>
-            <th>10:00-11:00</th>
-            <th>11:00-12:00</th>
-            <th>12:00-13:00</th>
-            <th>13:00-14:00</th>
-            <th>14:00-15:00</th>
-            <th>15:00-16:00</th>
-            <th>16:00-17:00</th>
-        </tr>
-
-        <?php
-        // รายชื่อวัน
-        $days = ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์'];
-
-        foreach ($days as $day) {
-            echo "<tr>";
-            echo "<th class='day-column'>{$day}</th>";
-
-            for ($i = 8; $i < 17; $i++) {
-                $current_time = sprintf('%02d:00', $i); // เวลาในรูปแบบ HH:00
-
-                if ($current_time == "12:00") {
-                    // แสดงพักกลางวันในช่วงเวลา 12:00-13:00
-                    echo "<td class='lunch-break'></td>";
-                    continue; // ข้ามช่วงเวลา 12:00-13:00
-                }
-
-                $found = false; // ใช้ตรวจสอบว่าพบวิชาในช่วงเวลานั้นหรือไม่
-
-                foreach ($schedule as $class) {
-                    $start_time = DateTime::createFromFormat('H:i:s', trim($class['start_time']));
-                    $end_time = DateTime::createFromFormat('H:i:s', trim($class['end_time']));
-
-                    // ตรวจสอบว่าช่วงเวลาอยู่ในขอบเขตของวิชาหรือไม่
-                    if ($class['study_date'] == $day && $start_time && $end_time && 
-                        $start_time->format('H:i') <= $current_time && $end_time->format('H:i') > $current_time) {
-                        echo "<td class='schedule-cell'>{$class['subject_id']}<br>{$class['section_name']}<br>ห้อง {$class['classroom']}<br>{$class['name_sername']}</td>";
-                        $found = true;
-                        break; // หยุดการค้นหาถ้าพบวิชา
-                    }
-                }
-
-                if (!$found) {
-                    echo "<td></td>"; // ถ้าไม่มีวิชาในช่วงเวลานั้นให้แสดงเซลล์ว่าง
-                }
-            }
-
-            echo "</tr>";
-        }
-        ?>
-    </table>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            fetch('../fetch/fetch_student_info.php')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('student-id').textContent += data['รหัสนักศึกษา'];
-                    document.getElementById('student-name').textContent += data['ชื่อ-นามสกุล'];
-                    document.getElementById('student-status').textContent += data['สถานภาพ'];
-                    document.getElementById('class-year').textContent += data['ชั้น'];
-                    document.getElementById('study-group').textContent += data['กลุ่มเรียน'];
-                    document.getElementById('major-name').textContent += data['สาขาวิชา'];
-                    document.getElementById('field-of-work').textContent += data['สาขางาน'];
-                    document.getElementById('advisor').textContent += data['อาจารย์ที่ปรึกษา'];
-                });
-        });
-    </script>
-</body>
-</html>
+END;
