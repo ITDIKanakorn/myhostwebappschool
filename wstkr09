@@ -436,7 +436,7 @@ FROM (
 				</textField>
 			</frame>
 			<frame>
-				<reportElement x="0" y="65" width="758" height="30" uuid="d47b0429-0d19-4d14-928d-27371739aeca">
+				<reportElement x="0" y="65" width="758" height="30" isRemoveLineWhenBlank="true" uuid="d47b0429-0d19-4d14-928d-27371739aeca">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<printWhenExpression><![CDATA[$P{printingCriteria}.equals( "1" ) ? true : ($V{PAGE_NUMBER}.equals(1) ? true : false)]]></printWhenExpression>
 				</reportElement>
